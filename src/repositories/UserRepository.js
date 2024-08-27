@@ -1,10 +1,11 @@
-const jwt = require("jsonwebtoken")
-const bcrypt = require("bcrypt")
-const {User} = require("../models/index")
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+const { User } = require("../models/index");
 const register = async (phoneNumber, password) => {
   try {
     // const avt =
     //   "https://shoe-shop-images.s3.ap-southeast-1.amazonaws.com/avt.jpg";
+    const avt = null;
     const updateAt = null;
     const userExist = await User.findOne({ phoneNumber });
     if (userExist) {
