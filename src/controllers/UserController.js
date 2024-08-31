@@ -1,34 +1,19 @@
-const { UserRepository } = require("../repositories/index");
-const register = async (req, res) => {
-  try {
-    const { phoneNumber, password } = req.body;
-    const user = await UserRepository.register(phoneNumber, password);
-    res.status(200).json({
-      message: "Register successfully!",
-      data: user,
+const { User } = require("../models/index");
+const asyncHandler = require("express-async-handler");
+const register = asyncHandler(async (req, res) => {
+  const { email, password, firstname, lastname } = req.body;
+  if (!email || !password || !firstname || !lastname)
+    return res.status(400).json({
+      succuess: false,
+      mes: "Missing inputs",
     });
-  } catch (error) {
-    res.status(500).json({
-      message: "User is exist!",
-    });
-  }
-};
-const login = async (req, res) => {
-  try {
-    const { phoneNumber, password } = req.body;
-    const userLogin = await UserRepository.login(phoneNumber, password);
-    res.status(200).json({
-      message: "Login successfully!",
-      data: userLogin,
-    });
-    console.log("Login successfully!");
-  } catch (error) {
-    res.status(500).json({
-      message: "Wrong username or password",
-    });
-  }
-};
+    const response = await User.create(req.body)
+    return res.status(200).json({
+      success: response ? true : false,
+      response
+    })
+});
+
 module.exports = {
   register,
-  login,
 };
