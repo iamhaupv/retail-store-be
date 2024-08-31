@@ -1,37 +1,57 @@
 const mongoose = require("mongoose");
 
-const User = mongoose.model(
-  "User",
-  new mongoose.Schema({
-    phoneNumber: {
+var userSchema = new mongoose.Schema(
+  {
+    firstname: {
       type: String,
-      require: true,
+      required: true,
+    },
+    lastname: {
+      type: String,
+      required: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    mobile: {
+      type: String,
+      required: true,
+      unique: true,
     },
     password: {
       type: String,
-      require: true,
+      required: true,
     },
     role: {
       type: String,
-      default: "User",
+      default: "user",
     },
-    permissions: {
-      type: [String],
+    cart: {
+      type: Array,
       default: [],
     },
-    createAt: {
-      type: Date,
-      default: Date.now(),
+    address: [{ type: mongoose.Types.ObjectId, ref: "Address" }],
+    wishlist: [{ type: mongoose.Types.ObjectId, ref: "Product" }],
+    isBlocked: {
+      type: Boolean,
+      default: false,
     },
-    updateAt: {
-      type: Date,
-      default: Date.now(),
-    },
-    avatar: {
+    refreshToken: {
       type: String,
-      require: false,
     },
-  })
+    passwordChangeAt: {
+      type: String,
+    },
+    passwordResetToken: {
+      type: String,
+    },
+    passwordResetExpires: {
+      type: String,
+    },
+  },
+  { timestamps: true }
 );
 
-module.exports = User;
+module.exports = mongoose.model("User", userSchema);
