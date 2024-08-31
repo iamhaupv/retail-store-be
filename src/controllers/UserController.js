@@ -1,6 +1,10 @@
 const { User } = require("../models/index");
 const asyncHandler = require("express-async-handler");
-const jwt = require("../middlewares/jwt");
+const {
+  generateAccessToken,
+  generateRefreshToken,
+} = require("../middlewares/jwt");
+const jwt = require("jsonwebtoken");
 const register = asyncHandler(async (req, res) => {
   const { email, password, firstname, lastname } = req.body;
   if (!email || !password || !firstname || !lastname)
@@ -29,9 +33,9 @@ const login = asyncHandler(async (req, res) => {
     // detach password, role
     const { password, role, ...userData } = response.toObject();
     // create access token
-    const accessToken = jwt.generateAccessToken(response._id, role);
+    const accessToken = generateAccessToken(response._id, role);
     // create refresh token
-    const refreshToken = jwt.generateRefreshToken(response._id);
+    const refreshToken = generateRefreshToken(response._id);
     // save refresh token in database
     await User.findByIdAndUpdate(response._id, { refreshToken }, { new: true });
     // save refresh token in cookie
@@ -50,14 +54,32 @@ const login = asyncHandler(async (req, res) => {
 });
 const getCurrent = asyncHandler(async (req, res) => {
   const { _id } = req.user;
-  const user = await User.findById(_id);
+  const user = await User.findById(_id).select("-refreshToken -password -role");
   return res.status(200).json({
     success: false,
     rs: user ? user : "User not found",
+  });
+});
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  const cookie = req.cookies;
+  if (!cookie && !cookie.refreshToken) {
+    throw new Error("No refresh token in cookies");
+  }
+  const rs = await jwt.verify(cookie.refreshToken, process.env.JWT_SECRET);
+  const response = await User.findOne({
+    _id: rs._id,
+    refreshToken: cookie.refreshToken,
+  });
+  return res.status(200).json({
+    success: response ? true : false,
+    newAccessToken: response
+      ? generateAccessToken(response._id, response.role)
+      : "Refresh token not matched",
   });
 });
 module.exports = {
   register,
   login,
   getCurrent,
+  refreshAccessToken,
 };
