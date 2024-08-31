@@ -6,4 +6,5 @@ router.post("/register", UserController.register);
 router.post("/login", UserController.login);
 router.get("/current", verifyAccessToken, UserController.getCurrent);
 router.post("/refresh-token", UserController.refreshAccessToken);
+router.get("/logout", UserController.logout)
 module.exports = router;
