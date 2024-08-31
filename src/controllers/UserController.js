@@ -1,5 +1,6 @@
 const { User } = require("../models/index");
 const asyncHandler = require("express-async-handler");
+const jwt = require("../middlewares/jwt")
 const register = asyncHandler(async (req, res) => {
   const { email, password, firstname, lastname } = req.body;
   if (!email || !password || !firstname || !lastname)
@@ -13,7 +14,7 @@ const register = asyncHandler(async (req, res) => {
   return res.status(200).json({
     success: user ? true : false,
     mes: newUser ? "Register successfully!" : "Something went wrong!",
-    data: newUser
+    data: newUser,
   });
 });
 const login = asyncHandler(async (req, res) => {
@@ -24,10 +25,14 @@ const login = asyncHandler(async (req, res) => {
       mes: "Missing inputs",
     });
   const response = await User.findOne({ email });
-  if (response && await response.isCorrectPassword(password)) {
+  if (response && (await response.isCorrectPassword(password))) {
+    const { password, role, ...userData } = response.toObject();
+    const accessToken = jwt.generateAccessToken(response._id, role)
+    const refreshToken = jwt.generateRefreshToken(response._id)
     return res.status(200).json({
       sucess: true,
-      data: response
+      accessToken,
+      userData,
     });
   } else {
     throw new Error("Incorrect email or passord!");
