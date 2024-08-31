@@ -114,7 +114,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
   const resetToken = user.createPasswordChangedToken();
   await user.save();
 
-  const html = `Xin vui lòng click vào link dưới đây để thay đổi mật khẩu của bạn.Link này sẽ hết hạn sau 15 phút kể từ bây giờ. <a href=${process.env.URL_CLIENT}api/v1/reset-password/${resetToken}>Click here</a>`;
+  const html = `Xin vui lòng click vào link dưới đây để thay đổi mật khẩu của bạn.Link này sẽ hết hạn sau 15 phút kể từ bây giờ. <a href=${process.env.URL_CLIENT}api/v1/user/reset-password/${resetToken}>Click here</a>`;
 
   const data = {
     email,
