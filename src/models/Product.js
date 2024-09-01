@@ -1,36 +1,71 @@
-const mongoose = require("mongoose");
+const mongoose = require("mongoose"); 
 
-const Product = mongoose.model(
-  "Product",
-  new mongoose.Schema({
-    phoneNumber: {
+var productSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    slug: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+    },
+    description: {
+      type: Array,
+      required: true,
+    },
+    brand: {
+      type: String,
+      required: true,
+    },
+    price: {
+      type: Number,
+      required: true,
+    },
+    category: {
       type: String,
       require: true,
     },
-    password: {
+    subcategory: {
+      type: String,
+    },
+    quantity: {
+      type: Number,
+      default: 0,
+    },
+    sold: {
+      type: Number,
+      default: 0,
+    },
+    images: {
+      type: Array,
+    },
+    color: {
       type: String,
       require: true,
     },
-    role: {
-      type: String,
-      default: "User",
+    ratings: [
+      {
+        star: { type: Number },
+        images: { type: Array },
+        postedBy: { type: mongoose.Types.ObjectId, ref: "User" },
+        comment: { type: String },
+        updatedAt: {
+          type: Date,
+        },
+      },
+    ],
+    totalRatings: {
+      type: Number,
+      default: 0,
     },
-    permissions: {
-      type: [String],
-      default: [],
-    },
-    createAt: {
-      type: Date,
-      default: Date.now(),
-    },
-    updateAt: {
-      type: Date,
-      default: Date.now(),
-    },
-    avatar: {
-      type: String,
-      require: false,
-    },
-  })
+  },
+  {
+    timestamps: true,
+  }
 );
-module.exports = Product;
+
+module.exports = mongoose.model("Product", productSchema);
