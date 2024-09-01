@@ -59,7 +59,7 @@ const getCurrent = asyncHandler(async (req, res) => {
   const { _id } = req.user;
   const user = await User.findById(_id).select("-refreshToken -password -role");
   return res.status(200).json({
-    success: false,
+    success: user ? true : false,
     rs: user ? user : "User not found",
   });
 });
@@ -151,7 +151,7 @@ const resetPassword = asyncHandler(async (req, res) => {
 });
 // get all user
 const getUsers = asyncHandler(async(req, res)=> {
-  const response = await User.find()
+  const response = await User.find().select("-refreshToken -password -role");
   return res.status(200).json({
     success: response ? true : false,
     users: response
