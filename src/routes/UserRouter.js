@@ -12,4 +12,5 @@ router.put("/resetpassword", UserController.resetPassword);
 router.get("/", [verifyAccessToken, isAdmin], UserController.getUsers);
 router.delete("/", [verifyAccessToken, isAdmin], UserController.deleteUser);
 router.put("/current", verifyAccessToken, UserController.updateUser);
+router.put("/:uid", [verifyAccessToken, isAdmin], UserController.updateUser);
 module.exports = router;

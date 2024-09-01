@@ -185,6 +185,22 @@ const updateUser = asyncHandler(async (req, res) => {
     updatedUser: response ? response : "Some thing went wrong",
   });
 });
+// update user by admin
+const updateUserByAdmin = asyncHandler(async(req, res) => {
+  const {uid} = req.params
+  if (!uid || Object.keys(req.body).length === 0)
+    throw new Error("Missing inputs");
+
+  // const data = { email, phone, name, address };
+  // if (req.file) data.avatar = req.file.path;
+  const response = await User.findByIdAndUpdate(uid, req.body, {
+    new: true,
+  }).select("-password -role -refreshToken");
+  return res.status(200).json({
+    success: response ? true : false,
+    updatedUser: response ? response : "Some thing went wrong",
+  });
+})
 module.exports = {
   register,
   login,
@@ -195,5 +211,6 @@ module.exports = {
   resetPassword,
   getUsers,
   deleteUser,
-  updateUser
+  updateUser,
+  updateUserByAdmin
 };
