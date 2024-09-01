@@ -40,9 +40,19 @@ const updateProduct = asyncHandler(async (req, res) => {
     updateProduct: updateProduct ? updateProduct : "Cannot update product!",
   });
 });
+// delete product by id
+const deleteProduct = asyncHandler(async(req, res) => {
+    const {pid} = req.params
+    const deleteProduct = await Product.findByIdAndDelete(pid)
+    return res.status(200).json({
+        success: deleteProduct ? true : false,
+        deleteProduct: deleteProduct ? deleteProduct : "Cannot delete product!"
+    })
+})
 module.exports = {
   createProduct,
   getProduct,
   getProducts,
   updateProduct,
+  deleteProduct
 };
