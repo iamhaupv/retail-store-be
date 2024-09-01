@@ -1,6 +1,7 @@
 const Product = require("../models/Product");
 const asyncHandler = require("express-async-handler");
 const slugify = require("slugify");
+// create product
 const createProduct = asyncHandler(async (req, res) => {
   if (Object.keys(req.body).length === 0) throw new Error("Missing inputs!");
   if (req.body && req.body.title) req.body.slug = slugify(req.body.title);
@@ -10,6 +11,16 @@ const createProduct = asyncHandler(async (req, res) => {
     createdProduct: newProduct ? newProduct : "Cannot create new product!s",
   });
 });
+// get product by id
+const getProduct = asyncHandler(async (req, res) => {
+  const { pid } = req.params;
+  const product = await Product.findById(pid);
+  return res.status(200).json({
+    success: product ? true : false,
+    productData: product ? product : "Cannot get product",
+  });
+});
 module.exports = {
   createProduct,
+  getProduct,
 };
