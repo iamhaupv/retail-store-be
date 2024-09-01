@@ -20,7 +20,16 @@ const getProduct = asyncHandler(async (req, res) => {
     productData: product ? product : "Cannot get product",
   });
 });
+// get all product
+const getProducts = asyncHandler(async (req, res) => {
+  const products = await Product.find();
+  return res.status(200).json({
+    success: products ? true : false,
+    productData: products ? products : "Cannot get products",
+  });
+});
 module.exports = {
   createProduct,
   getProduct,
+  getProducts,
 };
