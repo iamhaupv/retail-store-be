@@ -7,7 +7,7 @@ const {
 const jwt = require("jsonwebtoken");
 const makeToken = require("uniqid");
 const sendMail = require("../ultils/sendMail");
-const crypto = require("crypto")
+const crypto = require("crypto");
 const register = asyncHandler(async (req, res) => {
   const { email, password, firstname, lastname } = req.body;
   if (!email || !password || !firstname || !lastname)
@@ -150,13 +150,41 @@ const resetPassword = asyncHandler(async (req, res) => {
   });
 });
 // get all user
-const getUsers = asyncHandler(async(req, res)=> {
+const getUsers = asyncHandler(async (req, res) => {
   const response = await User.find().select("-refreshToken -password -role");
   return res.status(200).json({
     success: response ? true : false,
-    users: response
-  })
-})
+    users: response,
+  });
+});
+const deleteUser = asyncHandler(async (req, res) => {
+  const { _id } = req.query;
+  if (!_id) throw new Error("Missing inputs!");
+  const response = await User.findByIdAndDelete(_id);
+  return res.status(200).json({
+    success: response ? true : false,
+    deleteUser: response
+      ? `User with email ${response.email} deleted`
+      : "No user delete",
+  });
+});
+const updateUser = asyncHandler(async (req, res) => {
+  //
+  const { _id } = req.user;
+  // const { email, phone, name, address } = req.body;
+  if (!_id || Object.keys(req.body).length === 0)
+    throw new Error("Missing inputs");
+
+  // const data = { email, phone, name, address };
+  // if (req.file) data.avatar = req.file.path;
+  const response = await User.findByIdAndUpdate(_id, req.body, {
+    new: true,
+  }).select("-password -role -refreshToken");
+  return res.status(200).json({
+    success: response ? true : false,
+    updatedUser: response ? response : "Some thing went wrong",
+  });
+});
 module.exports = {
   register,
   login,
@@ -165,5 +193,7 @@ module.exports = {
   logout,
   forgotPassword,
   resetPassword,
-  getUsers
+  getUsers,
+  deleteUser,
+  updateUser
 };

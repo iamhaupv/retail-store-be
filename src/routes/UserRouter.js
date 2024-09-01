@@ -6,8 +6,10 @@ router.post("/register", UserController.register);
 router.post("/login", UserController.login);
 router.get("/current", verifyAccessToken, UserController.getCurrent);
 router.post("/refresh-token", UserController.refreshAccessToken);
-router.get("/logout", UserController.logout)
+router.get("/logout", UserController.logout);
 router.post("/forgotpassword", UserController.forgotPassword);
 router.put("/resetpassword", UserController.resetPassword);
-router.get("/getusers", [verifyAccessToken, isAdmin], UserController.getUsers)
+router.get("/", [verifyAccessToken, isAdmin], UserController.getUsers);
+router.delete("/", [verifyAccessToken, isAdmin], UserController.deleteUser);
+router.put("/current", verifyAccessToken, UserController.updateUser);
 module.exports = router;
