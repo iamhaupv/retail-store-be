@@ -8,6 +8,7 @@ const jwt = require("jsonwebtoken");
 const makeToken = require("uniqid");
 const sendMail = require("../ultils/sendMail");
 const crypto = require("crypto");
+// register
 const register = asyncHandler(async (req, res) => {
   const { email, password, firstname, lastname } = req.body;
   if (!email || !password || !firstname || !lastname)
@@ -24,6 +25,7 @@ const register = asyncHandler(async (req, res) => {
     data: newUser,
   });
 });
+// login
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password)
@@ -55,6 +57,7 @@ const login = asyncHandler(async (req, res) => {
     throw new Error("Incorrect email or passord!");
   }
 });
+// get user by id
 const getCurrent = asyncHandler(async (req, res) => {
   const { _id } = req.user;
   const user = await User.findById(_id).select("-refreshToken -password -role");
@@ -63,6 +66,7 @@ const getCurrent = asyncHandler(async (req, res) => {
     rs: user ? user : "User not found",
   });
 });
+// refresh access token
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const cookie = req.cookies;
   if (!cookie && !cookie.refreshToken) {
@@ -80,6 +84,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       : "Refresh token not matched",
   });
 });
+// logout
 const logout = asyncHandler(async (req, res) => {
   const cookie = req.cookies;
   if (!cookie || !cookie.refreshToken) {
@@ -106,6 +111,7 @@ const logout = asyncHandler(async (req, res) => {
 // Check token có giống với token mà server gửi mail hay không
 // Change password
 //Gữi mail change password
+// forgot password
 const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
   if (!email) throwError(401, "Missing email !", res);
@@ -127,6 +133,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
     rs,
   });
 });
+// reset password
 const resetPassword = asyncHandler(async (req, res) => {
   const { password, token } = req.body;
   if (!password || !token) throwError(403, "Missing input !", res);
@@ -157,6 +164,7 @@ const getUsers = asyncHandler(async (req, res) => {
     users: response,
   });
 });
+// delete user
 const deleteUser = asyncHandler(async (req, res) => {
   const { _id } = req.query;
   if (!_id) throw new Error("Missing inputs!");
@@ -168,6 +176,7 @@ const deleteUser = asyncHandler(async (req, res) => {
       : "No user delete",
   });
 });
+// update user
 const updateUser = asyncHandler(async (req, res) => {
   //
   const { _id } = req.user;
