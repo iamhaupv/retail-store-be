@@ -149,6 +149,14 @@ const resetPassword = asyncHandler(async (req, res) => {
     mes: user ? "Updated password" : "Something went wrong",
   });
 });
+// get all user
+const getUsers = asyncHandler(async(req, res)=> {
+  const response = await User.find()
+  return res.status(200).json({
+    success: response ? true : false,
+    users: response
+  })
+})
 module.exports = {
   register,
   login,
@@ -157,4 +165,5 @@ module.exports = {
   logout,
   forgotPassword,
   resetPassword,
+  getUsers
 };
