@@ -22,10 +22,28 @@ const getProduct = asyncHandler(async (req, res) => {
 });
 // get all product
 const getProducts = asyncHandler(async (req, res) => {
-  const products = await Product.find();
-  return res.status(200).json({
-    success: products ? true : false,
-    productData: products ? products : "Cannot get products!",
+  const queries = { ...req.query };
+  // Tach cac truong dac biet ra khoi queries
+  const excludeFields = ["limit", "sort", "page", "fields"];
+  excludeFields.forEach((el) => delete queries[el]);
+  // format sang mongose
+  let queryString = JSON.stringify(queries);
+  queryString = queryString.replace(
+    /\b(gte|gt|lt|lte)\b/g,
+    (macthedEl) => `$${macthedEl}`
+  );
+  const formatQueries = JSON.parse(queryString);
+  if (queries?.title)
+    formatQueries.title = { $regex: queries.title, $options: "i" };
+  let queryCommand = Product.find(queries);
+  queryCommand.exec(async (err, response) => {
+    if (err) throw new Error(err.message);
+    const counts = await Product.find(formatQueries).countDocuments();
+    return res.status(200).json({
+      success: response ? true : false,
+      products: response ? response : "Cannot get products",
+      counts,
+    });
   });
 });
 // update product by id
@@ -41,18 +59,18 @@ const updateProduct = asyncHandler(async (req, res) => {
   });
 });
 // delete product by id
-const deleteProduct = asyncHandler(async(req, res) => {
-    const {pid} = req.params
-    const deleteProduct = await Product.findByIdAndDelete(pid)
-    return res.status(200).json({
-        success: deleteProduct ? true : false,
-        deleteProduct: deleteProduct ? deleteProduct : "Cannot delete product!"
-    })
-})
+const deleteProduct = asyncHandler(async (req, res) => {
+  const { pid } = req.params;
+  const deleteProduct = await Product.findByIdAndDelete(pid);
+  return res.status(200).json({
+    success: deleteProduct ? true : false,
+    deleteProduct: deleteProduct ? deleteProduct : "Cannot delete product!",
+  });
+});
 module.exports = {
   createProduct,
   getProduct,
   getProducts,
   updateProduct,
-  deleteProduct
+  deleteProduct,
 };
