@@ -17,10 +17,7 @@ var productSchema = new mongoose.Schema(
       type: Array,
       required: true,
     },
-    brand: {
-      type: String,
-      required: true,
-    },
+    brand: [{ type: mongoose.Types.ObjectId, ref: "Brand" }],
     price: {
       type: Number,
       required: true,

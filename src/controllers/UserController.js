@@ -5,26 +5,61 @@ const {
   generateRefreshToken,
 } = require("../middlewares/jwt");
 const jwt = require("jsonwebtoken");
-const makeToken = require("uniqid");
 const sendMail = require("../ultils/sendMail");
 const crypto = require("crypto");
 // register
+// const register = asyncHandler(async (req, res) => {
+//   const { email, password, firstname, lastname, username } = req.body;
+//   if (!email || !password || !firstname || !lastname)
+//     return res.status(400).json({
+//       succuess: false,
+//       mes: "Missing inputs",
+//     });
+//   const user = await User.findOne({ email });
+//   if (user) throw new Error("User existed");
+//   const newUser = await User.create(req.body);
+//   return res.status(200).json({
+//     success: user ? true : false,
+//     mes: newUser ? "Register successfully!" : "Something went wrong!",
+//     data: newUser,
+//   });
+// });
 const register = asyncHandler(async (req, res) => {
   const { email, password, firstname, lastname } = req.body;
-  if (!email || !password || !firstname || !lastname)
+
+  if (!email || !password || !firstname || !lastname) {
     return res.status(400).json({
-      succuess: false,
+      success: false,
       mes: "Missing inputs",
     });
+  }
+
   const user = await User.findOne({ email });
   if (user) throw new Error("User existed");
-  const newUser = await User.create(req.body);
+
+  // Tạo username
+  const firstInitial = firstname.charAt(0).toUpperCase(); // Chữ cái đầu tiên của firstname
+  const lastInitials = lastname.toUpperCase().split(' ').map(word => word.charAt(0)).join(''); // Chữ cái đầu tiên của từng từ trong lastname
+  const baseUsername = firstInitial + lastInitials; // Kết hợp lại
+  let username = baseUsername;
+  let count = 1;
+
+  // Kiểm tra trùng lặp và tạo username duy nhất
+  while (await User.findOne({ username })) {
+    username = `${baseUsername}${count}`;
+    count++;
+  }
+
+  // Tạo user mới với username duy nhất
+  const newUser = await User.create({ ...req.body, username });
+
   return res.status(200).json({
-    success: user ? true : false,
+    success: newUser ? true : false,
     mes: newUser ? "Register successfully!" : "Something went wrong!",
     data: newUser,
   });
 });
+
 // login
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
@@ -49,7 +84,7 @@ const login = asyncHandler(async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     return res.status(200).json({
-      sucess: true,
+      success: true,
       accessToken,
       userData,
     });
@@ -120,7 +155,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
   const resetToken = user.createPasswordChangedToken();
   await user.save();
 
-  const html = `Xin vui lòng click vào link dưới đây để thay đổi mật khẩu của bạn.Link này sẽ hết hạn sau 15 phút kể từ bây giờ. <a href=${process.env.URL_CLIENT}api/v1/user/reset-password/${resetToken}>Click here</a>`;
+  const html = `Xin vui lòng click vào link dưới đây để thay đổi mật khẩu của bạn.Link này sẽ hết hạn sau 15 phút kể từ bây giờ. <a href=${process.env.URL_CLIENT}/reset-password/${resetToken}>Click here</a>`;
 
   const data = {
     email,

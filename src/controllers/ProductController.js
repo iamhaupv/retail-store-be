@@ -21,6 +21,34 @@ const getProduct = asyncHandler(async (req, res) => {
   });
 });
 // get all product
+// const getProducts = asyncHandler(async (req, res) => {
+//   const queries = { ...req.query };
+//   // Tach cac truong dac biet ra khoi queries
+//   const excludeFields = ["limit", "sort", "page", "fields"];
+//   excludeFields.forEach((el) => delete queries[el]);
+//   // format sang mongose
+//   let queryString = JSON.stringify(queries);
+//   queryString =  queryString.replace(
+//     /\b(gte|gt|lt|lte)\b/g,
+//     (macthedEl) => `$${macthedEl}`
+//   );
+//   const formatQueries = JSON.parse(queryString);
+//   console.log(queryString);
+//   if (queries?.title)
+//     formatQueries.title = { $regex: queries.title, $options: "i" };
+
+//   let queryCommand = Product.find(queries);
+//   queryCommand.exec(async (err, response) => {
+//     if (err) throw new Error(err.message);
+//     const counts = await Product.find(formatQueries).countDocuments();
+//     return res.status(200).json({
+//       success: response ? true : false,
+//       products: response ? response : "Cannot get products",
+//       counts,
+//     });
+//   });
+// });
+// Filtering, sorting & pagination
 const getProducts = asyncHandler(async (req, res) => {
   const queries = { ...req.query };
   // Tach cac truong dac biet ra khoi queries
@@ -33,12 +61,61 @@ const getProducts = asyncHandler(async (req, res) => {
     (macthedEl) => `$${macthedEl}`
   );
   const formatQueries = JSON.parse(queryString);
+  let colorqueryOj = {};
+  // Filter
   if (queries?.title)
     formatQueries.title = { $regex: queries.title, $options: "i" };
-  let queryCommand = Product.find(queries);
+  if (queries?.category)
+    formatQueries.category = {
+      $regex: queries.category,
+      $options: "i",
+    };
+  if (queries?.subcategory)
+    formatQueries.subcategory = {
+      $regex: queries.subcategory,
+      $options: "i",
+    };
+  if (queries?.color) {
+    delete formatQueries.color;
+    const colorArr = queries.color?.split(",");
+    const colorQuery = colorArr.map((el) => ({
+      color: { $regex: el, $options: "i" },
+    }));
+    colorqueryOj = { $or: colorQuery };
+  }
+  if (req.query.q) {
+    delete formatQueries.q;
+    formatQueries["$or"] = [
+      { title: { $regex: req.query.q, $options: "i" } },
+      { brand: { $regex: req.query.q, $options: "i" } },
+      { category: { $regex: req.query.q, $options: "i" } },
+    ];
+  }
+  const q = { ...colorqueryOj, ...formatQueries };
+  formatQueries.color = { $regex: queries.color, $options: "i" };
+  let queryCommand = Product.find(q);
+
+  // 2) Sorting
+  if (req.query.sort) {
+    const sortBy = req.query.sort.split(",").join(" ");
+    queryCommand = queryCommand.sort(sortBy);
+  }
+
+  // Filter limit
+  if (req.query.fields) {
+    const fields = req.query.fields.split(",").join(" ");
+    queryCommand = queryCommand.select(fields);
+  }
+
+  // Pagination
+  const page = +req.query.page || 1;
+  const limit = +req.query.limit || process.env.LIMIT_PRODUCTS;
+  const skip = (page - 1) * limit;
+  queryCommand.skip(skip).limit(limit);
+  //Excute query
   queryCommand.exec(async (err, response) => {
     if (err) throw new Error(err.message);
-    const counts = await Product.find(formatQueries).countDocuments();
+    const counts = await Product.find(q).countDocuments();
     return res.status(200).json({
       success: response ? true : false,
       products: response ? response : "Cannot get products",
@@ -46,6 +123,7 @@ const getProducts = asyncHandler(async (req, res) => {
     });
   });
 });
+
 // update product by id
 const updateProduct = asyncHandler(async (req, res) => {
   const { pid } = req.params;
