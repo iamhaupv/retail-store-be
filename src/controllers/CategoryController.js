@@ -24,6 +24,19 @@ const createCategory = async (req, res) => {
     throw new Error(error);
   }
 };
+// get list category
+const getListCategory = async (req, res) => {
+    try {
+        const response = await Category.find()
+        return res.status(200).json({
+            success: response ? true : false,
+            data: response ? response  : "Cannot get list categories!"
+        })
+    } catch (error) {
+        throw new Error(error)
+    }
+}
 module.exports = {
   createCategory,
+  getListCategory
 };

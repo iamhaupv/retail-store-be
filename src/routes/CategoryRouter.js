@@ -7,4 +7,5 @@ router.post(
   [verifyAccessToken, isAdmin],
   CategoryController.createCategory
 );
+router.get("/", CategoryController.getListCategory)
 module.exports = router;
