@@ -4,7 +4,7 @@ const { ProductController } = require("../controllers/index");
 const { verifyAccessToken, isAdmin } = require("../middlewares/verifyToken");
 const uploader = require("../config/cloudinary.config")
 // crate product
-router.post("/", [verifyAccessToken, isAdmin], ProductController.createProduct);
+router.post("/", [verifyAccessToken, isAdmin], uploader.array('images', 10), ProductController.createProduct);
 // get all product
 router.get("/", ProductController.getProducts)
 // delete product

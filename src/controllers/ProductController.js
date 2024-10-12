@@ -3,12 +3,22 @@ const asyncHandler = require("express-async-handler");
 const slugify = require("slugify");
 // create product
 const createProduct = asyncHandler(async (req, res) => {
-  if (Object.keys(req.body).length === 0) throw new Error("Missing inputs!");
-  if (req.body && req.body.title) req.body.slug = slugify(req.body.title);
+  if (Object.keys(req.body).length === 0) {
+    return res.status(400).json({ success: false, message: "Missing inputs!" });
+  }
+  if (req.body.title) {
+    req.body.slug = slugify(req.body.title);
+  } else {
+    return res.status(400).json({ success: false, message: "Title is required!" });
+  }
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ success: false, message: "Missing input files!" });
+  }
+  req.body.images = req.files.map(el => el.path);
   const newProduct = await Product.create(req.body);
-  return res.status(200).json({
-    success: newProduct ? true : false,
-    createdProduct: newProduct ? newProduct : "Cannot create new product!s",
+  return res.status(201).json({
+    success: true,
+    createdProduct: newProduct,
   });
 });
 // get product by id
