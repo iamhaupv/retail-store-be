@@ -145,10 +145,16 @@ const deleteProduct = asyncHandler(async (req, res) => {
     deleteProduct: deleteProduct ? deleteProduct : "Cannot delete product!",
   });
 });
+//  upload img
+const uploadImageProduct = asyncHandler(async(req, res) => {
+  console.log(req.files);
+  return res.json('OKE')
+})
 module.exports = {
   createProduct,
   getProduct,
   getProducts,
   updateProduct,
   deleteProduct,
+  uploadImageProduct
 };
