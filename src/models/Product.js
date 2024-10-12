@@ -17,15 +17,15 @@ var productSchema = new mongoose.Schema(
       type: Array,
       required: true,
     },
+    expires: {
+      type: String,
+    },
     brand: [{ type: mongoose.Types.ObjectId, ref: "Brand" }],
     price: {
       type: Number,
       required: true,
     },
-    category: {
-      type: String,
-      // require: true,
-    },
+    category: [{ type: mongoose.Types.ObjectId, ref: "Category" }],
     subcategory: {
       type: String,
     },

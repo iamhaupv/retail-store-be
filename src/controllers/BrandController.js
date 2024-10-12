@@ -14,6 +14,10 @@ const createBrand = asyncHandle(async (req, res) => {
       message: "Brand name already exists!",
     });
   }
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ success: false, message: "Missing input files!" });
+  }
+  req.body.images = req.files.map(el => el.path);
   const newBrand = await Brand.create(req.body);
   return res.status(201).json({
     success: true,
