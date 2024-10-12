@@ -17,7 +17,7 @@ const createShift = asyncHandler(async (req, res) => {
 // delete shift
 const deleteShift = asyncHandler(async (req, res) => {
   const { sid } = req.params;
-  const delShift = await Shift.deleteOne(sid);
+  const delShift = await Shift.findOneAndDelete(sid);
   return res.status(201).json({
     success: delShift ? true : false,
     delShift: delShift ? delShift : "Cannot delete shift!",
