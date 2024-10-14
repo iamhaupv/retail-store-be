@@ -1,6 +1,7 @@
 const Product = require("../models/Product");
 const asyncHandler = require("express-async-handler");
 const slugify = require("slugify");
+const { ProductController } = require(".");
 // create product
 const createProduct = asyncHandler(async (req, res) => {
   if (Object.keys(req.body).length === 0) {
@@ -165,11 +166,19 @@ const uploadImageProduct = asyncHandler(async(req, res) => {
     updateProduct: response ? response : "Cannot upload image product"
   })
 })
+const getAllProducts = asyncHandler(async(req, res) => {
+  const products = await Product.find().populate("brand");
+  return res.status(200).json({
+    success: products ? true : false,
+    products: products ? products : "Cannot get products!"
+  })
+})
 module.exports = {
   createProduct,
   getProduct,
   getProducts,
   updateProduct,
   deleteProduct,
-  uploadImageProduct
+  uploadImageProduct,
+  getAllProducts
 };

@@ -11,6 +11,8 @@ router.get("/", ProductController.getProducts)
 router.delete("/:pid", [verifyAccessToken, isAdmin], ProductController.deleteProduct)
 // update product
 router.put("/:pid", [verifyAccessToken, isAdmin], ProductController.updateProduct)
+// get list products
+router.get("/products", ProductController.getAllProducts)
 // get product by id
 router.get("/:pid", ProductController.getProduct);
 // upload image

@@ -7,6 +7,16 @@ var employeeSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    gender: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    birthday: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     email: {
       type: String,
       required: true,
@@ -14,10 +24,6 @@ var employeeSchema = new mongoose.Schema(
     },
     images: {
       type: Array,
-    },
-    age: {
-      type: Number,
-      required: true,
     },
     address: { type: String, require: true, trim: true },
     phone: { type: String, require: true, trim: true },

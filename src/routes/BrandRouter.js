@@ -5,5 +5,5 @@ const { verifyAccessToken, isAdmin } = require("../middlewares/verifyToken");
 const uploader = require("../config/cloudinary.config")
 
 router.post("/", [verifyAccessToken, isAdmin], uploader.array("images", 10),BrandController.createBrand)
-router.get("/", BrandController.getBrans)
+router.get("/", BrandController.getBrands)
 module.exports = router

@@ -26,7 +26,7 @@ const createBrand = asyncHandle(async (req, res) => {
 });
 
 // get list brand
-const getBrans = async (req, res) => {
+const getBrands = async (req, res) => {
   try {
     const brands = await Brand.find();
     return res.status(200).json({
@@ -39,5 +39,5 @@ const getBrans = async (req, res) => {
 }
 module.exports = {
   createBrand,
-  getBrans
+  getBrands
 };
