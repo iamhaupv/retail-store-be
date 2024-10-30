@@ -25,6 +25,11 @@ var employeeSchema = new mongoose.Schema(
     images: {
       type: Array,
     },
+    isDisplay: {
+      type: Boolean,
+      default: true
+    }
+    ,
     address: { type: String, require: true, trim: true },
     phone: { type: String, require: true, trim: true },
     description: { type: String, require: true, trim: true },

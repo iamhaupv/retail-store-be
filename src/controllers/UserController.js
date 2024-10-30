@@ -39,7 +39,11 @@ const register = asyncHandler(async (req, res) => {
 
   // Tạo username
   const firstInitial = firstname.charAt(0).toUpperCase(); // Chữ cái đầu tiên của firstname
-  const lastInitials = lastname.toUpperCase().split(' ').map(word => word.charAt(0)).join(''); // Chữ cái đầu tiên của từng từ trong lastname
+  const lastInitials = lastname
+    .toUpperCase()
+    .split(" ")
+    .map((word) => word.charAt(0))
+    .join(""); // Chữ cái đầu tiên của từng từ trong lastname
   const baseUsername = firstInitial + lastInitials; // Kết hợp lại
   let username = baseUsername;
   let count = 1;
@@ -95,7 +99,7 @@ const login = asyncHandler(async (req, res) => {
 // get user by id
 const getCurrent = asyncHandler(async (req, res) => {
   const { _id } = req.user;
-  const user = await User.findById(_id).select("-refreshToken -password -role");
+  const user = await User.findById(_id).select("-refreshToken -role");
   return res.status(200).json({
     success: user ? true : false,
     rs: user ? user : "User not found",
@@ -151,7 +155,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
   if (!email) throwError(401, "Missing email !", res);
   const user = await User.findOne({ email });
-  if (!user) throwError(400, "User not found !", res);
+  if (!user) throwError(400, "User not f00o0und !", res);
   const resetToken = user.createPasswordChangedToken();
   await user.save();
 
@@ -166,6 +170,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
   return res.status(200).json({
     success: true,
     rs,
+    resetToken,
   });
 });
 // reset password
@@ -230,8 +235,8 @@ const updateUser = asyncHandler(async (req, res) => {
   });
 });
 // update user by admin
-const updateUserByAdmin = asyncHandler(async(req, res) => {
-  const {uid} = req.params
+const updateUserByAdmin = asyncHandler(async (req, res) => {
+  const { uid } = req.params;
   if (!uid || Object.keys(req.body).length === 0)
     throw new Error("Missing inputs");
 
@@ -244,6 +249,32 @@ const updateUserByAdmin = asyncHandler(async(req, res) => {
     success: response ? true : false,
     updatedUser: response ? response : "Some thing went wrong",
   });
+});
+// check pass
+const checkPassword = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({
+      success: false,
+      message: "Missing email or password",
+    });
+  }
+  const user = await User.findOne({ email });
+  if (user && await user.isCorrectPassword(password)) {
+    return res.status(200).json({
+      success: true,
+      message: "Password is valid",
+    });
+  } else {
+    return res.status(401).json({
+      success: false,
+      message: "Your current password is not valid",
+    });
+  }
+});
+// last id receipt
+const lastIdReceipt  = asyncHandler(async (req, res) => {
+  
 })
 module.exports = {
   register,
@@ -256,5 +287,6 @@ module.exports = {
   getUsers,
   deleteUser,
   updateUser,
-  updateUserByAdmin
+  updateUserByAdmin,
+  checkPassword
 };

@@ -7,7 +7,9 @@ const createBrand = asyncHandle(async (req, res) => {
     return res.status(400).json({ success: false, message: "Missing input!" });
   }
   const { name } = req.body;
-  const isBrand = await Brand.findOne({ name: name });
+  const isBrand = await Brand.findOne({ name });
+  console.log(isBrand);
+  
   if (isBrand) {
     return res.status(400).json({
       success: false,

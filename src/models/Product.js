@@ -1,4 +1,4 @@
-const mongoose = require("mongoose"); 
+const mongoose = require("mongoose");
 
 var productSchema = new mongoose.Schema(
   {
@@ -20,12 +20,12 @@ var productSchema = new mongoose.Schema(
     expires: {
       type: String,
     },
-    brand: [{ type: mongoose.Types.ObjectId, ref: "Brand" }],
+    brand: { type: mongoose.Types.ObjectId, ref: "Brand" },
     price: {
       type: Number,
       required: true,
     },
-    category: [{ type: mongoose.Types.ObjectId, ref: "Category" }],
+    category: { type: mongoose.Types.ObjectId, ref: "Category" },
     subcategory: {
       type: String,
     },
@@ -33,6 +33,16 @@ var productSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    status: {
+      type: String,
+      enum: ["in_stock", "out_of_stock", "discontinued"],
+      default: "out_of_stock",
+    },
+    isDisplay: {
+      type: Boolean,
+      default: true
+    }
+    ,
     sold: {
       type: Number,
       default: 0,

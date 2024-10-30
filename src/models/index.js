@@ -4,6 +4,8 @@ const Brand = require("./Brand");
 const Category = require("./Category");
 const Employee = require("./Employee");
 const Shift = require("./Shift");
+const WarehouseReceipt = require("./WarehouseReceipt")
+const Unit = require("./Unit")
 module.exports = {
   Product,
   User,
@@ -11,4 +13,6 @@ module.exports = {
   Category,
   Employee,
   Shift,
+  WarehouseReceipt,
+  Unit
 };

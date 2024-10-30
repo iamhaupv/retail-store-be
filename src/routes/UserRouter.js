@@ -12,6 +12,8 @@ router.get("/current", verifyAccessToken, UserController.getCurrent);
 router.post("/refresh-token", UserController.refreshAccessToken);
 // log out user
 router.get("/logout", UserController.logout);
+// check password
+router.post("/check-password", [verifyAccessToken, isAdmin], UserController.checkPassword)
 // forgot password
 router.post("/forgotpassword", UserController.forgotPassword);
 // reset password
