@@ -9,7 +9,7 @@ const createBrand = asyncHandle(async (req, res) => {
   const { name } = req.body;
   const isBrand = await Brand.findOne({ name });
   console.log(isBrand);
-  
+
   if (isBrand) {
     return res.status(400).json({
       success: false,
@@ -17,9 +17,11 @@ const createBrand = asyncHandle(async (req, res) => {
     });
   }
   if (!req.files || req.files.length === 0) {
-    return res.status(400).json({ success: false, message: "Missing input files!" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Missing input files!" });
   }
-  req.body.images = req.files.map(el => el.path);
+  req.body.images = req.files.map((el) => el.path);
   const newBrand = await Brand.create(req.body);
   return res.status(201).json({
     success: true,
@@ -30,16 +32,16 @@ const createBrand = asyncHandle(async (req, res) => {
 // get list brand
 const getBrands = async (req, res) => {
   try {
-    const brands = await Brand.find();
+    const brands = await Brand.find().sort({ createdAt: -1 }).exec();
     return res.status(200).json({
       success: brands ? true : false,
-      brands: brands ? brands : "Cannot get brand!"
-    })
+      brands: brands ? brands : "Cannot get brand!",
+    });
   } catch (error) {
-    throw new Error(error)
+    throw new Error(error);
   }
-}
+};
 module.exports = {
   createBrand,
-  getBrands
+  getBrands,
 };
