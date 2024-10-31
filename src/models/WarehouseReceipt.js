@@ -4,15 +4,19 @@ var warehouseReceiptSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Types.ObjectId, ref: "User", required: true },
     description: { type: String, required: true, trim: true },
-    idPNK: {type: String, require: true, trim: true},
+    idPNK: { type: String, require: true, trim: true },
     products: [
       {
-        product: { type: mongoose.Types.ObjectId, ref: "Product", required: true },
+        product: {
+          type: mongoose.Types.ObjectId,
+          ref: "Product",
+          required: true,
+        },
         quantity: { type: Number, required: true },
         importPrice: { type: Number, required: true },
-        expires: { type: Date, required: true }
-      }
-    ]
+        expires: { type: Date, required: true },
+      },
+    ],
   },
   {
     timestamps: true,

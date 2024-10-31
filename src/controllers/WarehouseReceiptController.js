@@ -26,7 +26,7 @@ const lastIdReceipt = expressAsyncHandler(async (req, res) => {
       if (!lastReceipt) {
         return res.status(200).json({ lastId: null });
       }
-  
+      
       const lastId = lastReceipt.idPNK; // Sử dụng trường đúng để lấy mã phiếu
       res.status(200).json({ lastId });
     } catch (error) {

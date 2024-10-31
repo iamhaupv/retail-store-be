@@ -183,7 +183,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
   const limit = parseInt(req.query.limit) || 5; // Số sản phẩm mỗi trang, mặc định là 5
   const skip = (page - 1) * limit; // Số lượng sản phẩm cần bỏ qua
 
-  const products = await Product.find({ isDisplay: true }).populate("brand").populate("category");
+  const products = await Product.find({ isDisplay: true }).populate("brand").populate("category").sort({ createdAt: -1 }).exec();
   console.log(products);
   // const products = await Product.find({isDisplay: true}).populate("brand").skip(skip).limit(limit);
 
