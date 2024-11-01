@@ -1,6 +1,8 @@
 const Product = require("../models/Product");
+const expressAsyncHandler = require("express-async-handler");
 const asyncHandler = require("express-async-handler");
 const slugify = require("slugify");
+const { Brand } = require("../models");
 // create product
 const createProduct = asyncHandler(async (req, res) => {
   if (Object.keys(req.body).length === 0) {
@@ -230,6 +232,38 @@ const changeIsDisplay = asyncHandler(async (req, res) => {
       : "Cannot change status is display product!",
   });
 });
+// filter by brand
+const productFilterByBrandName = expressAsyncHandler(async (req, res) => {
+  try {
+    const { name } = req.body; // Get brand name from request body
+
+    // Find the brand by name
+    const brand = await Brand.findOne({ name });
+
+    if (!brand) {
+      return res.status(404).json({
+        success: false,
+        message: "Brand not found",
+      });
+    }
+
+    // Now find products that belong to this brand
+    const products = await Product.find({ brand: brand._id });
+
+    return res.status(200).json({
+      success: true,
+      products: products.length > 0 ? products : "No products found!",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Cannot get list products!",
+      error: error.message,
+    });
+  }
+});
+
 module.exports = {
   createProduct,
   getProduct,
@@ -241,4 +275,5 @@ module.exports = {
   getAllProductWithStatus_IN_STOCK,
   getAllProductWithStatus_OUT_OF_STOCK,
   changeIsDisplay,
+  productFilterByBrandName
 };

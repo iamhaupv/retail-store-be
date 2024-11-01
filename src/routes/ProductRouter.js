@@ -19,6 +19,8 @@ router.get("/products", [verifyAccessToken, isAdmin], ProductController.getAllPr
 router.get("/in_stock", [verifyAccessToken, isAdmin], ProductController.getAllProductWithStatus_IN_STOCK)
 // get list product with status out_of_stock
 router.get("/out_of_stock", [verifyAccessToken, isAdmin], ProductController.getAllProductWithStatus_OUT_OF_STOCK)
+// get list product by brand
+router.post("/filter-by-brand", [verifyAccessToken, isAdmin], ProductController.productFilterByBrandName)
 // get product by id
 router.get("/:pid", ProductController.getProduct);
 // upload image

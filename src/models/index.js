@@ -6,6 +6,7 @@ const Employee = require("./Employee");
 const Shift = require("./Shift");
 const WarehouseReceipt = require("./WarehouseReceipt")
 const Unit = require("./Unit")
+const Shelf = require("./Shelf")
 module.exports = {
   Product,
   User,
@@ -14,5 +15,6 @@ module.exports = {
   Employee,
   Shift,
   WarehouseReceipt,
-  Unit
+  Unit,
+  Shelf
 };
