@@ -36,30 +36,25 @@ const getListEmployee = expressAsyncHandler(async (req, res) => {
     throw new Error(error);
   }
 });
-// find employee by name 
+// find employee by name
 const findEmployeeByName = expressAsyncHandler(async (req, res) => {
   const { name } = req.body; // Lấy tên từ body
 
   if (!name) {
-    return res.status(400).json({ message: 'Tên không được để trống!' });
+    return res.status(400).json({ message: "Tên không được để trống!" });
   }
+  const employees = await Employee.find({
+    name: { $regex: name, $options: "i" },
+  });
 
-  try {
-    // Tìm tất cả nhân viên có tên chứa chuỗi 'name'
-    const employees = await Employee.find({ name: { $regex: name, $options: 'i' } });
-
-    if (employees.length === 0) {
-      return res.status(404).json({ message: 'Không tìm thấy nhân viên nào!' });
-    }
-
-    return res.status(200).json(employees);
-  } catch (error) {
-    return res.status(500).json({ message: 'Lỗi máy chủ!', error: error.message });
-  }
+  return res.status(200).json({
+    success: employees ? true : false,
+    employees: employees ? employees : "Cannot get employees!",
+  });
 });
 
 module.exports = {
   createEmployee,
   getListEmployee,
-  findEmployeeByName
+  findEmployeeByName,
 };

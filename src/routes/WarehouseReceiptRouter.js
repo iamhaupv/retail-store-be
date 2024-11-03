@@ -6,6 +6,7 @@ const {WarehouseReceiptController} = require("../controllers/index")
 router.post("/create-warehouse-receipt", [verifyAccessToken, isAdmin], WarehouseReceiptController.createWarehouseReceipt)
 // get all warehouse receipt 
 router.get("/", [verifyAccessToken, isAdmin], WarehouseReceiptController.getAllWarehouseReceipt)
+router.post("/:id", [verifyAccessToken, isAdmin], WarehouseReceiptController.changeIsDisplay)
 // last id receipt
 router.get("/last-id", [verifyAccessToken, isAdmin], WarehouseReceiptController.lastIdReceipt)
 module.exports = router

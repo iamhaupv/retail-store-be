@@ -12,7 +12,6 @@ app.use(express.static("./src"));
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 initRoutes(app);
-
 app.listen(port, async () => {
   await connect();
   console.log(`App on for port ${port}`);

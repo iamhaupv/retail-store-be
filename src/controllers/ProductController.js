@@ -233,13 +233,79 @@ const changeIsDisplay = asyncHandler(async (req, res) => {
   });
 });
 // filter by brand
+// const productFilterByBrandName = expressAsyncHandler(async (req, res) => {
+//   try {
+//     const { name } = req.body; // Get brand name from request body
+
+//     // Find the brand by name
+//     const brand = await Brand.findOne({ name });
+
+//     if (!brand) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Brand not found",
+//       });
+//     }
+
+//     // Now find products that belong to this brand
+//     const products = await Product.find({ brand: brand._id });
+
+//     return res.status(200).json({
+//       success: true,
+//       products: products.length > 0 ? products : "No products found!",
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Cannot get list products!",
+//       error: error.message,
+//     });
+//   }
+// });
+// const productFilterByBrandName = expressAsyncHandler(async (req, res) => {
+//   const { name } = req.body; // Get brand name from request body
+
+//   try {
+//     // Use a regex to find brands matching the partial name (case-insensitive)
+//     const brand = await Brand.findOne({ name: { $regex: name, $options: 'i' } });
+//     if (!brand) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Brand not found",
+//       });
+//     }
+
+//     // Find products that belong to this brand
+//     const products = await Product.find({ brand: brand._id });
+
+//     return res.status(200).json({
+//       success: true,
+//       products: products.length > 0 ? products : "No products found!",
+//     });
+//   } catch (error) {
+//     console.error("Error fetching products:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Cannot get list of products!",
+//       error: error.message,
+//     });
+//   }
+// });
 const productFilterByBrandName = expressAsyncHandler(async (req, res) => {
+  const { name } = req.body; // Get brand name from request body
+
+  // Check if the name is empty
+  if (!name || name.trim() === "") {
+    return res.status(400).json({
+      success: false,
+      message: "Brand name cannot be empty",
+    });
+  }
+
   try {
-    const { name } = req.body; // Get brand name from request body
-
-    // Find the brand by name
-    const brand = await Brand.findOne({ name });
-
+    // Use a regex to find brands matching the partial name (case-insensitive)
+    const brand = await Brand.findOne({ name: { $regex: name, $options: 'i' } });
     if (!brand) {
       return res.status(404).json({
         success: false,
@@ -247,22 +313,32 @@ const productFilterByBrandName = expressAsyncHandler(async (req, res) => {
       });
     }
 
-    // Now find products that belong to this brand
+    // Find products that belong to this brand
     const products = await Product.find({ brand: brand._id });
+
+    if (products.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No products found for this brand",
+        products: [],
+      });
+    }
 
     return res.status(200).json({
       success: true,
-      products: products.length > 0 ? products : "No products found!",
+      products,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Error fetching products:", error);
     return res.status(500).json({
       success: false,
-      message: "Cannot get list products!",
+      message: "Cannot get list of products!",
       error: error.message,
     });
   }
 });
+
+
 
 module.exports = {
   createProduct,
