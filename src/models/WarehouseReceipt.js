@@ -16,6 +16,7 @@ var warehouseReceiptSchema = new mongoose.Schema(
         quantity: { type: Number, required: true },
         importPrice: { type: Number, required: true },
         expires: { type: Date, required: true },
+        unit: { type: mongoose.Types.ObjectId, ref: "Unit", required: true },
       },
     ],
   },

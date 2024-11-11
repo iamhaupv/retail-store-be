@@ -91,6 +91,7 @@ const login = asyncHandler(async (req, res) => {
       success: true,
       accessToken,
       userData,
+      role,
     });
   } else {
     throw new Error("Incorrect email or passord!");

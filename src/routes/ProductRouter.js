@@ -21,6 +21,13 @@ router.get("/in_stock", [verifyAccessToken, isAdmin], ProductController.getAllPr
 router.get("/out_of_stock", [verifyAccessToken, isAdmin], ProductController.getAllProductWithStatus_OUT_OF_STOCK)
 // get list product by brand
 router.post("/filter-by-brand", [verifyAccessToken, isAdmin], ProductController.productFilterByBrandName)
+router.get("/filter-all-product-by-receipt", [verifyAccessToken, isAdmin], ProductController.productByAllReceipt)
+//
+router.post("/filter-product-by-status", [verifyAccessToken, isAdmin], ProductController.filterProductByStatus)
+//
+router.post("/filter-product-by-name", [verifyAccessToken, isAdmin], ProductController.filterProductByName) 
+//
+router.post("/add-product-to-shelf", [verifyAccessToken, isAdmin], ProductController.addProductToShelf)
 // get product by id
 router.get("/:pid", ProductController.getProduct);
 // upload image

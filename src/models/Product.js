@@ -21,6 +21,8 @@ var productSchema = new mongoose.Schema(
       type: String,
     },
     brand: { type: mongoose.Types.ObjectId, ref: "Brand" },
+    shelf: [{ type: mongoose.Types.ObjectId, ref: "Shelf" }],
+    warehouseReceipt: [{ type: mongoose.Types.ObjectId, ref: "WarehouseReceipt" }],
     price: {
       type: Number,
       required: true,
@@ -35,7 +37,7 @@ var productSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["in_stock", "out_of_stock", "discontinued"],
+      enum: ["in_stock", "out_of_stock", "discontinued", "in_progress_sale"],
       default: "out_of_stock",
     },
     isDisplay: {

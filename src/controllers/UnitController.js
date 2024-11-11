@@ -25,7 +25,35 @@ const getAllUnit = expressAsyncHandler(async(req, res) => {
         units: units ? units : "Cannot get list unit!"
     })
 })
+const filterUnitByName = expressAsyncHandler(async (req, res) => {
+    const { name } = req.body;
+
+    if (!name) {
+        return res.status(400).json({
+            success: false,
+            message: "Tên đơn vị không được để trống",
+        });
+    }
+
+    try {
+        // Tìm kiếm đơn vị theo tên với regex
+        const units = await Unit.find({ name: { $regex: name, $options: "i" } });
+
+        return res.status(200).json({
+            success: true,
+            units: units.length > 0 ? units : "Không tìm thấy đơn vị nào",
+        });
+    } catch (error) {
+        console.error("Error fetching units:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Lỗi khi lấy danh sách đơn vị",
+        });
+    }
+});
+
 module.exports = {
     createUnit,
-    getAllUnit
+    getAllUnit,
+    filterUnitByName
 }
