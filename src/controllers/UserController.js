@@ -1,5 +1,6 @@
 const { User } = require("../models/index");
 const asyncHandler = require("express-async-handler");
+const cloudinary = require('cloudinary')
 const {
   generateAccessToken,
   generateRefreshToken,
@@ -273,10 +274,51 @@ const checkPassword = asyncHandler(async (req, res) => {
     });
   }
 });
-// last id receipt
-const lastIdReceipt  = asyncHandler(async (req, res) => {
-  
-})
+
+const updateInfor = asyncHandler(async (req, res) => {
+  const { id, firstname, lastname, email, mobile, username, address, birthday, gender } = req.body;
+
+  try {
+    // Tìm người dùng theo ID
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Cập nhật các trường người dùng (chỉ cập nhật các trường có giá trị mới)
+    user.firstname = firstname || user.firstname;
+    user.lastname = lastname || user.lastname;
+    user.email = email || user.email;
+    user.mobile = mobile || user.mobile;
+    user.username = username || user.username;
+    user.address = address || user.address;
+    user.birthday = birthday || user.birthday;
+    user.gender = gender || user.gender;
+
+    // Nếu có ảnh mới được upload, chỉ cập nhật lại URL ảnh mới
+    if (req.file && req.file.path) {
+      // Cập nhật URL ảnh mới vào trường `image`
+      user.image = req.file.path; // Đây là URL ảnh mới
+    }
+
+    // Lưu lại thông tin người dùng đã cập nhật
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    console.error("Error updating user information:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update user information",
+      error: error.message,
+    });
+  }
+});
+
+
 module.exports = {
   register,
   login,
@@ -289,5 +331,6 @@ module.exports = {
   deleteUser,
   updateUser,
   updateUserByAdmin,
-  checkPassword
+  checkPassword,
+  updateInfor
 };

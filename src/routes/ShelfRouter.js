@@ -7,4 +7,7 @@ router.get("/", [verifyAccessToken, isAdmin], ShelfController.getListShelf)
 router.post("/filter-product-by-name-in-shelf", [verifyAccessToken, isAdmin], ShelfController.filterProductByNameInShelf)
 router.get("/filter-all-product-in-shelf", [verifyAccessToken, isAdmin], ShelfController.filterAllProductInShelf)
 router.post("/filter-by-shelf", [verifyAccessToken, isAdmin], ShelfController.filterProductByShelf)
+router.post("/filter-product-multi-condition", [verifyAccessToken, isAdmin], ShelfController.filterProductMultiCondition)
+router.get("/get-sum-quantity-product-by-name-in-shelf", [verifyAccessToken], ShelfController.getSumQuantityProductInShelf)
+router.get("/filter-category-by-product-in-shelf", [verifyAccessToken, isAdmin], ShelfController.filterCategoryByProductInShelf)
 module.exports = router

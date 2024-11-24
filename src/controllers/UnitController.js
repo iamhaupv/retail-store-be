@@ -51,9 +51,17 @@ const filterUnitByName = expressAsyncHandler(async (req, res) => {
         });
     }
 });
-
+const filterConvertQuantityByUnitName = expressAsyncHandler(async(req, res) => {
+    const {name} = req.body
+    const unit = await Unit.findOne({name})
+    return res.status(200).json({
+      success: unit ? true : false,
+      unit: unit ? unit : "Cannot get unit"
+    })
+  })
 module.exports = {
     createUnit,
     getAllUnit,
-    filterUnitByName
+    filterUnitByName,
+    filterConvertQuantityByUnitName
 }

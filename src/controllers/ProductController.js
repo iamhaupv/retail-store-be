@@ -2,7 +2,7 @@ const Product = require("../models/Product");
 const expressAsyncHandler = require("express-async-handler");
 const asyncHandler = require("express-async-handler");
 const slugify = require("slugify");
-const { Brand, Shelf, WarehouseReceipt } = require("../models");
+const { Brand, Shelf, WarehouseReceipt, Category } = require("../models");
 const { default: mongoose } = require("mongoose");
 // create product
 const createProduct = asyncHandler(async (req, res) => {
@@ -145,8 +145,7 @@ const getProducts = asyncHandler(async (req, res) => {
 
 // update product by id
 const updateProduct = asyncHandler(async (req, res) => {
-  const { pid } = req.params;
-  if (req.body && req.body.title) req.body.slug = slugify(req.body.title);
+  const { pid } = req.body;
   const updateProduct = await Product.findByIdAndUpdate(pid, req.body, {
     new: true,
   });
@@ -155,6 +154,50 @@ const updateProduct = asyncHandler(async (req, res) => {
     updateProduct: updateProduct ? updateProduct : "Cannot update product!",
   });
 });
+// update product by id body
+const updatePriceProduct = asyncHandler(async (req, res) => {
+  const { id, price } = req.body;
+
+  // Kiểm tra đầu vào
+  if (!id || price == null) {
+    return res.status(400).json({ success: false, message: "Missing required fields!" });
+  }
+
+  // Kiểm tra giá trị price hợp lệ
+  if (typeof price !== "number" || price <= 0) {
+    return res.status(400).json({ success: false, message: "Invalid price value!" });
+  }
+
+  try {
+    // Cập nhật giá sản phẩm
+    const product = await Product.findOneAndUpdate(
+      { _id: id },
+      { price: price },
+      { new: true } // Trả về sản phẩm sau khi cập nhật
+    );
+
+    // Kiểm tra sản phẩm có tồn tại hay không
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found or cannot update product!",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Product price updated successfully!",
+      product,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while updating product price.",
+      error: error.message,
+    });
+  }
+});
+
 // delete product by id
 const deleteProduct = asyncHandler(async (req, res) => {
   const { pid } = req.params;
@@ -210,8 +253,8 @@ const getAllProducts = asyncHandler(async (req, res) => {
     totalPages: Math.ceil(totalProducts / limit), // Làm tròn đến số nguyên gần nhất vd 4.3 ==> 5
   });
 });
-
 // get list product status in_stock
+
 const getAllProductWithStatus_IN_STOCK = asyncHandler(async (req, res) => {
   const products = await Product.find({ status: "in_stock" });
   return res.status(200).json({
@@ -292,64 +335,67 @@ const productFilterByBrandName = expressAsyncHandler(async (req, res) => {
   }
 });
 // fiter product by receipt in shelf
-// const productByAllReceipt = expressAsyncHandler(async (req, res) => {
-//   const products = await WarehouseReceipt.find()
-//     .populate({
-//       path: "products.product",
-//       populate: [
-//         { path: "brand", select: "name" },
-//         { path: "category", select: "name" },
-//       ],
-//     })
-//     .sort({ createdAt: -1 })
-//     .exec();
-//   return res.status(200).json({
-//     success: products ? true : false,
-//     products: products ? products : "Cannot get list products",
-//   });
-// });
-
-//
 const productByAllReceipt = expressAsyncHandler(async (req, res) => {
   try {
+    // Lấy tất cả các phiếu nhập kho và populate thông tin sản phẩm
     const receipts = await WarehouseReceipt.find()
       .populate({
-        path: 'products.product',
+        path: "products.product",
         populate: [
-          { path: 'brand', select: 'name' },
-          { path: 'category', select: 'name' },
+          { path: "brand", select: "name" },
+          { path: "category", select: "name" },
         ],
+      })
+      .populate({
+        path: "products.unit",
+        select: "convertQuantity",
       })
       .sort({ createdAt: -1 })
       .exec();
 
-    // Lọc thông tin sản phẩm từ các phiếu
-    const products = receipts.map(receipt => {
-      return receipt.products.map(item => {
+    // Lọc và tính toán số lượng sản phẩm từ các phiếu
+    const products = receipts.flatMap((receipt) =>
+      receipt.products.map((item) => {
+        const convertQuantity = item.unit?.convertQuantity || 1; // Lấy hệ số quy đổi
+        const calculatedQuantity = item.quantityDynamic ? item.quantity * convertQuantity : 0; // Tính toán số lượng
+
+        const product = item.product || {};
+        const price = product.price || 0; // Giá sản phẩm từ product
+
+        // Lấy importPrice từ item
+        const importPrice = item.importPrice || 0; // Giá nhập vào
+
         return {
           idPNK: receipt.idPNK,
-          images: item.product.images,
-          title: item.product.title,
-          category: item.product.category?.name, // Sử dụng toán tử optional chaining
-          brand: item.product.brand?.name, // Sử dụng toán tử optional chaining
-          quantity: item.quantity,
-          _id: item.product._id,
-          warehouseReceipt: receipt._id
+          images: product.images || [], // Nếu không có hình ảnh, trả về mảng rỗng
+          title: product.title || "N/A", // Tiêu đề mặc định nếu không có
+          category: product.category?.name || "N/A",
+          brand: product.brand?.name || "N/A",
+          quantity: calculatedQuantity, // Số lượng đã quy đổi
+          price: price, // Giá bán
+          importPrice: importPrice, // Thêm importPrice vào kết quả
+          _id: product._id,
+          warehouseReceipt: receipt._id,
+          quantityDynamic: item.quantityDynamic || 0
         };
-      });
-    }).flat(); // Làm phẳng mảng để có cấu trúc tốt hơn
+      })
+    );
 
+    // Trả về kết quả
     return res.status(200).json({
       success: products.length > 0,
-      products: products.length > 0 ? products : 'Cannot get list of products',
+      products: products.length > 0 ? products : "Không có sản phẩm nào.",
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: error.message || "Đã xảy ra lỗi trong quá trình xử lý.",
     });
   }
 });
+
+// 
+
 const filterProductByName = expressAsyncHandler(async (req, res) => {
   const { title } = req.body;
 
@@ -357,94 +403,20 @@ const filterProductByName = expressAsyncHandler(async (req, res) => {
   if (!title || title.trim() === "") {
     return res.status(200).json({
       success: false,
-      products: []
+      products: [],
     });
   }
 
-  const products = await Product.find({ title: { $regex: title, $options: "i" } }).populate("brand");
-  
+  const products = await Product.find({
+    title: { $regex: title, $options: "i" },
+  }).populate("brand");
+
   return res.status(200).json({
     success: true,
-    products: products.length > 0 ? products : "Cannot get products"
+    products: products.length > 0 ? products : "Cannot get products",
   });
 });
 
-const addProductToShelf = expressAsyncHandler(async (req, res) => {
-  const { name, products } = req.body;
-
-  if (!name || !Array.isArray(products) || products.length === 0) {
-      return res.status(400).json({ message: "Shelf name and products are required" });
-  }
-
-  // Tìm kệ theo tên
-  const shelf = await Shelf.findOne({ name });
-  if (!shelf) {
-      return res.status(404).json({ message: "Shelf not found" });
-  }
-
-  // Duyệt qua các sản phẩm và thêm vào kệ
-  for (const { product, quantity, warehouseReceipt } of products) {
-      // Kiểm tra tính hợp lệ của productId
-      if (!mongoose.Types.ObjectId.isValid(product)) {
-          return res.status(400).json({ message: `Invalid product ID: ${product}` });
-      }
-
-      // Kiểm tra tính hợp lệ của receiptId
-      if (!mongoose.Types.ObjectId.isValid(warehouseReceipt)) {
-          return res.status(400).json({ message: `Invalid warehouse receipt ID: ${warehouseReceipt}` });
-      }
-
-      // Tìm sản phẩm trong kệ
-      const existingProduct = shelf.products.find(p => 
-          p.product.toString() === product && p.warehouseReceipt.toString() === warehouseReceipt
-      );
-
-      if (existingProduct) {
-          // Cập nhật số lượng nếu sản phẩm và phiếu nhập kho đã tồn tại
-          existingProduct.quantity += quantity;
-      } else {
-          // Thêm sản phẩm mới nếu chưa tồn tại
-          shelf.products.push({ product: product, quantity, warehouseReceipt: warehouseReceipt });
-      }
-
-      // Cập nhật số lượng trong phiếu nhập kho
-      const receipt = await WarehouseReceipt.findById(warehouseReceipt);
-      if (!receipt) {
-          return res.status(404).json({ message: `Warehouse receipt not found: ${warehouseReceipt}` });
-      }
-
-      const productInReceipt = receipt.products.find(p => p.product.toString() === product);
-      if (productInReceipt) {
-          // Trừ số lượng trong phiếu nhập kho
-          productInReceipt.quantity -= quantity;
-
-          // Nếu số lượng trong phiếu nhập kho bằng 0, có thể xóa sản phẩm khỏi phiếu nhập kho
-          if (productInReceipt.quantity <= 0) {
-              receipt.products = receipt.products.filter(p => p.product.toString() !== product);
-          }
-          await receipt.save(); // Lưu thay đổi vào phiếu nhập kho
-      } else {
-          return res.status(400).json({ message: `Product not found in warehouse receipt: ${product}` });
-      }
-  }
-
-  // Tính toán tổng số lượng sản phẩm trên kệ
-  shelf.quantity = shelf.products.reduce((total, p) => total + (p.quantity || 0), 0);
-
-  // Lưu các thay đổi vào cơ sở dữ liệu
-  await shelf.save();
-
-  // Trả về kệ đã cập nhật
-  const updatedShelf = await Shelf.findById(shelf._id).populate({
-      path: 'products.product',
-  });
-
-  res.status(200).json({
-      success: true,
-      message: "Products added to shelf successfully and updated in warehouse receipts",
-      shelf: updatedShelf,
-  });
-});
 
 const filterProductByStatus = expressAsyncHandler(async (req, res) => {
   const { status } = req.body;
@@ -453,17 +425,346 @@ const filterProductByStatus = expressAsyncHandler(async (req, res) => {
   if (!status || status.trim() === "") {
     return res.status(200).json({
       success: false,
-      products: []
+      products: [],
     });
   }
 
-  const products = await Product.find({ status: status }).populate("brand");
-  
+  const products = await Product.find({ status: status })
+    .populate("brand")
+    .populate("category");
+
   return res.status(200).json({
     success: true,
-    products: products.length > 0 ? products : "Cannot get products"
+    products: products.length > 0 ? products : "Cannot get products",
   });
 });
+
+const filterProductByBrand = expressAsyncHandler(async (req, res) => {
+  const { brandName } = req.body;
+
+  // Kiểm tra xem title có rỗng hoặc chỉ chứa khoảng trắng không
+  if (!brandName || brandName.trim() === "") {
+    return res.status(200).json({
+      success: false,
+      products: [],
+    });
+  }
+  const brand = await Brand.findOne({name: brandName})
+  const products = await Product.find({brand: brand._id })
+    .populate("brand")
+    .populate("category");
+
+  return res.status(200).json({
+    success: true,
+    products: products.length > 0 ? products : "Cannot get products",
+  });
+});
+// 
+const filterProductMultiCondition = expressAsyncHandler(async (req, res) => {
+  const { title, status, brandName, categoryName } = req.body;
+
+  // Initialize an empty query object
+  const query = {};
+
+  // Check for title and add to query if not empty
+  if (title && title.trim() !== "") {
+    query.title = { $regex: title, $options: "i" };
+  }
+
+  // Check for status and add to query if not empty
+  if (status && status.trim() !== "") {
+    query.status = status;
+  }
+
+  // Check for brandName and add to query if not empty
+  if (brandName && brandName.trim() !== "") {
+    const brand = await Brand.findOne({ name: brandName });
+    if (brand) {
+      query.brand = brand._id; // Add brand ID to query if brand exists
+    } else {
+      // If brand is not found, return empty results
+      return res.status(200).json({
+        success: true,
+        products: [],
+      });
+    }
+  }
+  if (categoryName && categoryName.trim() !== "") {
+    const category = await Category.findOne({ name: categoryName });
+    if (category) {
+      query.category = category._id; // Add brand ID to query if brand exists
+    } else {
+      // If brand is not found, return empty results
+      return res.status(200).json({
+        success: true,
+        products: [],
+      });
+    }
+  }
+  // Check if at least one condition is provided
+  if (Object.keys(query).length === 0) {
+    return res.status(200).json({
+      success: false,
+      products: [],
+      message: "No filter conditions provided.",
+    });
+  }
+
+  // Fetch products based on constructed query
+  const products = await Product.find(query)
+    .populate("brand")
+    .populate("category");
+
+  return res.status(200).json({
+    success: true,
+    products: products.length > 0 ? products : [],
+  });
+});
+// filter price by name
+const filterPriceByProductName = expressAsyncHandler(async(req, res) => {
+  const {title} = req.body
+  const product = await Product.findOne({title})
+  return res.status(200).json({
+    success: product ? true : false,
+    product: product ? product : "Cannot get product"
+  })
+})
+
+
+// pagination product
+const getAllProductsPagination = asyncHandler(async (req, res) => {
+  try {
+    const { page, limit } = req.body; // Lấy page và limit từ body
+
+    // Chuyển đổi sang số và kiểm tra
+    const currentPage = parseInt(page) || 1;
+    const currentLimit = parseInt(limit) || 5;
+
+    if (currentPage < 1 || currentLimit < 1) {
+      return res.status(400).json({ success: false, message: 'Page and limit must be greater than 0' });
+    }
+
+    const skip = (currentPage - 1) * currentLimit;
+
+    const products = await Product.find({ isDisplay: true })
+      .populate("brand")
+      .populate("category")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(currentLimit)
+      .exec();
+
+    const totalProducts = await Product.countDocuments({ isDisplay: true });
+
+    return res.status(200).json({
+      success: true,
+      products,
+      currentPage,
+      totalProducts,
+      totalPages: Math.ceil(totalProducts / currentLimit),
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// const addProductToShelf = expressAsyncHandler(async (req, res) => {
+//   const { name, products } = req.body;
+
+//   if (!name || !Array.isArray(products) || products.length === 0) {
+//     return res.status(400).json({ message: "Tên kệ và sản phẩm là bắt buộc" });
+//   }
+
+//   const shelf = await Shelf.findOne({ name });
+//   if (!shelf) {
+//     return res.status(404).json({ message: "Không tìm thấy kệ" });
+//   }
+
+//   for (const { product, quantity, warehouseReceipt } of products) {
+//     if (!mongoose.Types.ObjectId.isValid(product) || !mongoose.Types.ObjectId.isValid(warehouseReceipt)) {
+//       return res.status(400).json({ message: `ID sản phẩm hoặc phiếu nhập kho không hợp lệ` });
+//     }
+
+//     const receipt = await WarehouseReceipt.findById(warehouseReceipt);
+//     if (!receipt) {
+//       return res.status(404).json({ message: `Không tìm thấy phiếu nhập kho: ${warehouseReceipt}` });
+//     }
+
+//     const productInReceipt = receipt.products.find(p => p.product.toString() === product);
+//     if (!productInReceipt) {
+//       return res.status(400).json({ message: `Sản phẩm không có trong phiếu nhập kho: ${product}` });
+//     }
+
+//     if (quantity > productInReceipt.quantityDynamic) {
+//       return res.status(400).json({ message: "Số lượng yêu cầu vượt quá số lượng có sẵn" });
+//     }
+
+//     const existingProduct = shelf.products.find(
+//       (p) => p.product.toString() === product && p.warehouseReceipt.toString() === warehouseReceipt
+//     );
+
+//     if (existingProduct) {
+//       // Cập nhật quantity của phiếu nhập kho
+//       existingProduct.quantity += quantity;
+      
+//       // Cập nhật sumQuantity cho tất cả các phiếu cùng sản phẩm
+//       shelf.products.forEach(p => {
+//         if (p.product.toString() === product) {
+//           p.sumQuantity += quantity; // Cộng dồn vào sumQuantity
+//         }
+//       });
+//     } else {
+//       const productInfo = await Product.findById(product);
+//       if (!productInfo) {
+//         return res.status(404).json({ message: `Không tìm thấy sản phẩm: ${product}` });
+//       }
+
+//       shelf.products.push({
+//         product,
+//         title: productInfo.title,
+//         quantity,
+//         warehouseReceipt,
+//         sumQuantity: quantity, // Khởi tạo sumQuantity bằng quantity
+//       });
+//     }
+
+//     // Cập nhật quantityDynamic của phiếu nhập kho
+//     productInReceipt.quantityDynamic -= quantity;
+//     if (productInReceipt.quantityDynamic < 0) {
+//       return res.status(400).json({ message: "Số lượng động không thể âm" });
+//     }
+//     await receipt.save();
+//   }
+
+//   // Cập nhật tổng số lượng sản phẩm trên kệ
+//   shelf.quantity = shelf.products.reduce(
+//     (total, p) => total + (p.quantity || 0),
+//     0
+//   );
+
+//   // Cập nhật tổng sumQuantity cho kệ
+//   shelf.sumQuantity = shelf.products.reduce(
+//     (total, p) => total + (p.sumQuantity || 0),
+//     0
+//   );
+
+//   await shelf.save();
+
+//   const updatedShelf = await Shelf.findById(shelf._id).populate({
+//     path: "products.product",
+//   });
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Sản phẩm đã được thêm vào kệ thành công với sumQuantity được đồng bộ",
+//     shelf: updatedShelf,
+//   });
+// });
+
+const addProductToShelf = expressAsyncHandler(async (req, res) => {
+  const { name, products } = req.body;
+
+  if (!name || !Array.isArray(products) || products.length === 0) {
+    return res.status(400).json({ message: "Tên kệ và sản phẩm là bắt buộc" });
+  }
+
+  const shelf = await Shelf.findOne({ name });
+  if (!shelf) {
+    return res.status(404).json({ message: "Không tìm thấy kệ" });
+  }
+
+  for (const { product, quantity, warehouseReceipt } of products) {
+    if (!mongoose.Types.ObjectId.isValid(product) || !mongoose.Types.ObjectId.isValid(warehouseReceipt)) {
+      return res.status(400).json({ message: `ID sản phẩm hoặc phiếu nhập kho không hợp lệ` });
+    }
+
+    const receipt = await WarehouseReceipt.findById(warehouseReceipt);
+    if (!receipt) {
+      return res.status(404).json({ message: `Không tìm thấy phiếu nhập kho: ${warehouseReceipt}` });
+    }
+
+    const productInReceipt = receipt.products.find(p => p.product.toString() === product);
+    if (!productInReceipt) {
+      return res.status(400).json({ message: `Sản phẩm không có trong phiếu nhập kho: ${product}` });
+    }
+
+    if (quantity > productInReceipt.quantityDynamic) {
+      return res.status(400).json({ message: "Số lượng yêu cầu vượt quá số lượng có sẵn" });
+    }
+
+    const existingProduct = shelf.products.find(
+      (p) => p.product.toString() === product && p.warehouseReceipt.toString() === warehouseReceipt
+    );
+
+    if (existingProduct) {
+      // Cập nhật quantity của phiếu nhập kho
+      existingProduct.quantity += quantity;
+
+      // Cập nhật sumQuantity cho tất cả các phiếu cùng sản phẩm
+      shelf.products.forEach(p => {
+        if (p.product.toString() === product) {
+          p.sumQuantity += quantity; // Cộng dồn vào sumQuantity
+        }
+      });
+    } else {
+      const productInfo = await Product.findById(product);
+      if (!productInfo) {
+        return res.status(404).json({ message: `Không tìm thấy sản phẩm: ${product}` });
+      }
+
+      shelf.products.push({
+        product,
+        title: productInfo.title,
+        quantity,
+        warehouseReceipt,
+        sumQuantity: quantity, // Khởi tạo sumQuantity bằng quantity
+      });
+    }
+
+    // Cập nhật quantityDynamic của phiếu nhập kho
+    productInReceipt.quantityDynamic -= quantity;
+    if (productInReceipt.quantityDynamic < 0) {
+      return res.status(400).json({ message: "Số lượng động không thể âm" });
+    }
+    await receipt.save();
+
+    // Cập nhật quantity trong Product
+    const productInStore = await Product.findById(product);
+    if (productInStore) {
+      productInStore.quantity -= quantity;
+      if (productInStore.quantity < 0) {
+        return res.status(400).json({ message: `Số lượng sản phẩm trong kho không đủ` });
+      }
+      await productInStore.save();
+    }
+  }
+
+  // Cập nhật tổng số lượng sản phẩm trên kệ
+  shelf.quantity = shelf.products.reduce(
+    (total, p) => total + (p.quantity || 0),
+    0
+  );
+
+  // Cập nhật tổng sumQuantity cho kệ
+  shelf.sumQuantity = shelf.products.reduce(
+    (total, p) => total + (p.sumQuantity || 0),
+    0
+  );
+
+  await shelf.save();
+
+  const updatedShelf = await Shelf.findById(shelf._id).populate({
+    path: "products.product",
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Sản phẩm đã được thêm vào kệ thành công với sumQuantity được đồng bộ",
+    shelf: updatedShelf,
+  });
+});
+
+
 module.exports = {
   createProduct,
   getProduct,
@@ -479,5 +780,10 @@ module.exports = {
   productByAllReceipt,
   addProductToShelf,
   filterProductByName,
-  filterProductByStatus
+  filterProductByStatus,
+  filterProductByBrand,
+  filterProductMultiCondition,
+  filterPriceByProductName,
+  getAllProductsPagination,
+  updatePriceProduct
 };

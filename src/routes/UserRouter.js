@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { UserController } = require("../controllers/index");
 const { verifyAccessToken, isAdmin } = require("../middlewares/verifyToken");
+const uploader = require("../config/cloudinary.config")
 // register user
 router.post("/register", UserController.register);
 //  login user
@@ -16,6 +17,8 @@ router.get("/logout", UserController.logout);
 router.post("/check-password", [verifyAccessToken, isAdmin], UserController.checkPassword)
 // forgot password
 router.post("/forgotpassword", UserController.forgotPassword);
+// update infor
+router.put("/update-infor", [verifyAccessToken], uploader.single('image'), UserController.updateInfor)
 // reset password
 router.put("/resetpassword", UserController.resetPassword);
 //  get all user

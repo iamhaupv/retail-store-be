@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 var shiftSchema = new mongoose.Schema(
   {
-    nameShift: {
+    name: {
       type: String,
       required: true,
       trim: true,
@@ -12,7 +12,7 @@ var shiftSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    employee: [{ type: mongoose.Types.ObjectId, ref: "Employee" }],
+    employees: [{ type: mongoose.Types.ObjectId, ref: "Employee" }],
     description: { type: String, require: true, trim: true },
   },
   {

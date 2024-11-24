@@ -14,8 +14,7 @@ var productSchema = new mongoose.Schema(
       lowercase: true,
     },
     description: {
-      type: Array,
-      required: true,
+      type: String,
     },
     expires: {
       type: String,
@@ -28,9 +27,6 @@ var productSchema = new mongoose.Schema(
       required: true,
     },
     category: { type: mongoose.Types.ObjectId, ref: "Category" },
-    subcategory: {
-      type: String,
-    },
     quantity: {
       type: Number,
       default: 0,
@@ -43,8 +39,7 @@ var productSchema = new mongoose.Schema(
     isDisplay: {
       type: Boolean,
       default: true
-    }
-    ,
+    }   ,
     sold: {
       type: Number,
       default: 0,
@@ -52,25 +47,9 @@ var productSchema = new mongoose.Schema(
     images: {
       type: Array,
     },
-    color: {
-      type: String,
-      require: true,
-    },
-    ratings: [
-      {
-        star: { type: Number },
-        images: { type: Array },
-        postedBy: { type: mongoose.Types.ObjectId, ref: "User" },
-        comment: { type: String },
-        updatedAt: {
-          type: Date,
-        },
-      },
-    ],
-    totalRatings: {
-      type: Number,
-      default: 0,
-    },
+    sumQuantity: {
+      type: Number
+    }
   },
   {
     timestamps: true,

@@ -10,7 +10,7 @@ router.get("/", ProductController.getProducts)
 // delete product
 router.delete("/:pid", [verifyAccessToken, isAdmin], ProductController.deleteProduct)
 // update product
-router.put("/:pid", [verifyAccessToken, isAdmin], ProductController.updateProduct)
+router.put("/", [verifyAccessToken, isAdmin], uploader.array("images", 10), ProductController.updateProduct)
 // change is display
 router.put("/is-display/:pid", [verifyAccessToken, isAdmin], ProductController.changeIsDisplay)
 // get list products
@@ -21,11 +21,22 @@ router.get("/in_stock", [verifyAccessToken, isAdmin], ProductController.getAllPr
 router.get("/out_of_stock", [verifyAccessToken, isAdmin], ProductController.getAllProductWithStatus_OUT_OF_STOCK)
 // get list product by brand
 router.post("/filter-by-brand", [verifyAccessToken, isAdmin], ProductController.productFilterByBrandName)
+// 
 router.get("/filter-all-product-by-receipt", [verifyAccessToken, isAdmin], ProductController.productByAllReceipt)
 //
+router.post("/filter-product-multi-condition", [verifyAccessToken, isAdmin], ProductController.filterProductMultiCondition)
+// 
 router.post("/filter-product-by-status", [verifyAccessToken, isAdmin], ProductController.filterProductByStatus)
 //
+router.patch("/update-price", [verifyAccessToken, isAdmin], ProductController.updatePriceProduct)
+//
 router.post("/filter-product-by-name", [verifyAccessToken, isAdmin], ProductController.filterProductByName) 
+// 
+router.post("/filter-product-by-brand", [verifyAccessToken, isAdmin], ProductController.filterProductByBrand) 
+//
+router.post("/filter-price-by-product-name", [verifyAccessToken], ProductController.filterPriceByProductName)
+//
+router.post("/product-pagination", [verifyAccessToken, isAdmin], ProductController.getAllProductsPagination) 
 //
 router.post("/add-product-to-shelf", [verifyAccessToken, isAdmin], ProductController.addProductToShelf)
 // get product by id

@@ -8,6 +8,7 @@ const ShiftRouter = require("./ShiftRouter")
 const WarehouseReceiptRouter = require("./WarehouseReceiptRouter");
 const UnitRouter = require("./UnitRouter")
 const ShelfRouter = require("./ShelfRouter")
+const OrderRouter = require("./OrderRouter")
 const initRoutes = (app) => {
   app.use("/api/v1/user", UserRouter);
   app.use("/api/v1/product", ProductRouter);
@@ -18,6 +19,7 @@ const initRoutes = (app) => {
   app.use("/api/v1/warehouse", WarehouseReceiptRouter)
   app.use("/api/v1/unit", UnitRouter)
   app.use("/api/v1/shelf", ShelfRouter)
+  app.use("/api/v1/order", OrderRouter)
   app.use(notFound);
   app.use(errorHandler);
 };

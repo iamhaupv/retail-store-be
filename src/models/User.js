@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
-const { type } = require("os");
 var userSchema = new mongoose.Schema(
   {
     firstname: {
@@ -33,11 +32,9 @@ var userSchema = new mongoose.Schema(
       type: String,
       default: "user",
     },
-    cart: {
-      type: Array,
-      default: [],
+    birthday: {
+      type: String
     },
-    // address: [{ type: mongoose.Types.ObjectId, ref: "Address" }],
     address: {type: String},
     wishlist: [{ type: mongoose.Types.ObjectId, ref: "Product" }],
     isBlocked: {
@@ -54,6 +51,9 @@ var userSchema = new mongoose.Schema(
       type: String,
     },
     image: {
+      type: String
+    },
+    gender: {
       type: String
     },
     passwordResetExpires: {

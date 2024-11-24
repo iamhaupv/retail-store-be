@@ -32,7 +32,7 @@ var employeeSchema = new mongoose.Schema(
     ,
     address: { type: String, require: true, trim: true },
     phone: { type: String, require: true, trim: true },
-    description: { type: String, require: true, trim: true },
+    description: { type: String, trim: true },
   },
   {
     timestamps: true,

@@ -3,9 +3,9 @@ const mongoose = require("mongoose");
 var warehouseReceiptSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Types.ObjectId, ref: "User", required: true },
-    description: { type: String, required: true, trim: true },
-    idPNK: { type: String, require: true, trim: true },
-    isDisplay: { type: Boolean, require: true, default: true },
+    description: { type: String, trim: true },
+    idPNK: { type: String, required: true, trim: true },
+    isDisplay: { type: Boolean, required: true, default: true },
     products: [
       {
         product: {
@@ -17,6 +17,7 @@ var warehouseReceiptSchema = new mongoose.Schema(
         importPrice: { type: Number, required: true },
         expires: { type: Date, required: true },
         unit: { type: mongoose.Types.ObjectId, ref: "Unit", required: true },
+        quantityDynamic: { type: Number, required: true },
       },
     ],
   },

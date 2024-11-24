@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const WarehouseReceipt = require("./WarehouseReceipt");
 
 var shelfSchema = new mongoose.Schema(
   {
@@ -9,8 +8,7 @@ var shelfSchema = new mongoose.Schema(
       trim: true,
     },
     description: {
-      type: Array,
-      required: true,
+      type: String,
     },
     quantity: {
       type: Number,
@@ -29,7 +27,8 @@ var shelfSchema = new mongoose.Schema(
         },
         title: {type: String, require: true},
         quantity: { type: Number, default: 0 },
-        warehouseReceipt: { type: mongoose.Types.ObjectId, ref: "WarehouseReceipt" }
+        warehouseReceipt: { type: mongoose.Types.ObjectId, ref: "WarehouseReceipt" },
+        sumQuantity: {type: Number, require: true}
       },
     ],
   },

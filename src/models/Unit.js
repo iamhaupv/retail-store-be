@@ -15,7 +15,7 @@ var unitSchema = new mongoose.Schema(
       type: Boolean,
       default: true
     },
-    description: { type: String, require: true, trim: true },
+    description: { type: String, trim: true },
   },
   {
     timestamps: true,

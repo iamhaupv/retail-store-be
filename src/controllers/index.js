@@ -7,6 +7,7 @@ const ShiftController = require("./ShiftController")
 const WarehouseReceiptController = require("./WarehouseReceiptController")
 const UnitController = require("./UnitController")
 const ShelfController = require("./ShelfController")
+const OrderController = require("./OrderController")
 module.exports = {
   UserController,
   ProductController,
@@ -16,5 +17,6 @@ module.exports = {
   ShiftController,
   WarehouseReceiptController,
   UnitController,
-  ShelfController
+  ShelfController,
+  OrderController
 };
