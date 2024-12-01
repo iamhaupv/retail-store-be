@@ -4,7 +4,7 @@ var warehouseReceiptSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Types.ObjectId, ref: "User", required: true },
     description: { type: String, trim: true },
-    idPNK: { type: String, required: true, trim: true },
+    idPNK: { type: String, required: true, trim: true, unique: true },
     isDisplay: { type: Boolean, required: true, default: true },
     products: [
       {

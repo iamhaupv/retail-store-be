@@ -11,6 +11,9 @@ router.get("/", [verifyAccessToken, isAdmin], WarehouseReceiptController.getAllW
 // 
 router.post("/filter-receipt-by-date", [verifyAccessToken, isAdmin], WarehouseReceiptController.filterReceiptByDate)
 // 
+router.get("/sum", [verifyAccessToken, isAdmin], WarehouseReceiptController.sumTotalAmountReceipt)
+//
+router.post("/filter-by-condition", [verifyAccessToken, isAdmin], WarehouseReceiptController.getFilteredWarehouseReceipts)
 router.post("/filter-id-PNK", [verifyAccessToken, isAdmin], WarehouseReceiptController.filterByIdPNK)
 router.post("/:id", [verifyAccessToken, isAdmin], WarehouseReceiptController.changeIsDisplay)
 // last id receipt

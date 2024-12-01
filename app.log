@@ -1,0 +1,31 @@
+2024-12-01T10:47:23.410Z [info]: User undefined authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T10:47:23.420Z [info]: User undefined granted admin access from ::ffff:127.0.0.1
+2024-12-01T10:48:47.955Z [info]: User undefined authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T10:48:47.961Z [info]: User undefined granted admin access from ::ffff:127.0.0.1
+2024-12-01T10:49:39.269Z [info]: User undefined authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T10:49:39.274Z [info]: User undefined granted admin access from ::ffff:127.0.0.1
+2024-12-01T10:50:44.130Z [info]: User undefined authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T10:50:44.137Z [info]: User 66f7ca512260a961f0dc4faa granted admin access from ::ffff:127.0.0.1
+2024-12-01T10:51:09.144Z [info]: User undefined authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T10:51:09.590Z [info]: User undefined authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T10:51:10.035Z [info]: User undefined authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T10:51:58.583Z [info]: User undefined authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T10:52:00.489Z [info]: User undefined authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T10:55:21.006Z [info]: User undefined authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T10:56:18.167Z [info]: User undefined authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T10:56:22.312Z [info]: User undefined authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T10:57:18.399Z [info]: User undefined authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T10:59:50.957Z [info]: User [object Object] authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T11:00:35.735Z [info]: User 674ae02acddd40c1b384dd51 authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T11:00:37.787Z [info]: User 674ae02acddd40c1b384dd51 authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T11:00:58.750Z [info]: User 674ae02acddd40c1b384dd51 authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T11:01:37.291Z [info]: User 674ae02acddd40c1b384dd51 role user authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T11:01:38.975Z [info]: User 674ae02acddd40c1b384dd51 role user authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T11:01:51.800Z [info]: User 66f7ca512260a961f0dc4faa role admin authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T11:01:51.802Z [info]: User 66f7ca512260a961f0dc4faa granted admin access from ::ffff:127.0.0.1
+2024-12-01T11:02:13.413Z [info]: User 674ae02acddd40c1b384dd51 role user authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T11:02:13.512Z [info]: User 674ae02acddd40c1b384dd51 role user authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T11:02:13.517Z [info]: User 674ae02acddd40c1b384dd51 role user authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T11:02:13.660Z [info]: User 674ae02acddd40c1b384dd51 role user authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T11:02:13.726Z [info]: User 674ae02acddd40c1b384dd51 role user authenticated successfully from ::ffff:127.0.0.1
+2024-12-01T11:02:13.793Z [info]: User 674ae02acddd40c1b384dd51 role user authenticated successfully from ::ffff:127.0.0.1

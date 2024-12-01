@@ -30,6 +30,13 @@ var orderSchema = new mongoose.Schema(
     change: {
       type: Number,
     },
+    amountVAT: {
+      type: Number
+    },
+    id: {
+      type: Number,
+      unique: true
+    }
   },
   {
     timestamps: true,

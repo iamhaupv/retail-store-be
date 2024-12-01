@@ -3,40 +3,31 @@ const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 var userSchema = new mongoose.Schema(
   {
-    firstname: {
-      type: String,
-      required: true,
-    },
-    lastname: {
-      type: String,
-      required: true,
-    },
+    // name: {
+    //   type: String,
+    //   required: true,
+    // },
     email: {
       type: String,
       required: true,
       unique: true,
     },
-    mobile: {
-      type: String,
-      required: true,
-      unique: true,
-    },
+    // phone: {
+    //   type: String,
+    //   required: true,
+    // },
     password: {
       type: String,
       required: true,
-    },
-    username: {
-      type: String,
     },
     role: {
       type: String,
       default: "user",
     },
-    birthday: {
-      type: String
-    },
-    address: {type: String},
-    wishlist: [{ type: mongoose.Types.ObjectId, ref: "Product" }],
+    // birthday: {
+    //   type: String
+    // },
+    // address: {type: String},
     isBlocked: {
       type: Boolean,
       default: false,
@@ -44,21 +35,22 @@ var userSchema = new mongoose.Schema(
     refreshToken: {
       type: String,
     },
-    passwordChangeAt: {
-      type: String,
-    },
+    // passwordChangeAt: {
+    //   type: String,
+    // },
     passwordResetToken: {
       type: String,
     },
-    image: {
-      type: String
-    },
-    gender: {
-      type: String
-    },
+    // image: {
+    //   type: String
+    // },
+    // gender: {
+    //   type: String
+    // },
     passwordResetExpires: {
       type: String,
     },
+    employee: { type: mongoose.Types.ObjectId, ref: "Employee" }
   },
   { timestamps: true }
 );

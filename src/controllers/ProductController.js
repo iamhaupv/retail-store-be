@@ -1,7 +1,6 @@
 const Product = require("../models/Product");
 const expressAsyncHandler = require("express-async-handler");
 const asyncHandler = require("express-async-handler");
-const slugify = require("slugify");
 const { Brand, Shelf, WarehouseReceipt, Category } = require("../models");
 const { default: mongoose } = require("mongoose");
 // create product
@@ -9,13 +8,13 @@ const createProduct = asyncHandler(async (req, res) => {
   if (Object.keys(req.body).length === 0) {
     return res.status(400).json({ success: false, message: "Missing inputs!" });
   }
-  if (req.body.title) {
-    req.body.slug = slugify(req.body.title);
-  } else {
-    return res
-      .status(400)
-      .json({ success: false, message: "Title is required!" });
-  }
+  // if (req.body.title) {
+  //   req.body.slug = slugify(req.body.title);
+  // } else {
+  //   return res
+  //     .status(400)
+  //     .json({ success: false, message: "Title is required!" });
+  // }
   if (!req.files || req.files.length === 0) {
     return res
       .status(400)
@@ -160,12 +159,16 @@ const updatePriceProduct = asyncHandler(async (req, res) => {
 
   // Kiểm tra đầu vào
   if (!id || price == null) {
-    return res.status(400).json({ success: false, message: "Missing required fields!" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Missing required fields!" });
   }
 
   // Kiểm tra giá trị price hợp lệ
   if (typeof price !== "number" || price <= 0) {
-    return res.status(400).json({ success: false, message: "Invalid price value!" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid price value!" });
   }
 
   try {
@@ -223,34 +226,18 @@ const uploadImageProduct = asyncHandler(async (req, res) => {
 });
 // pagination
 const getAllProducts = asyncHandler(async (req, res) => {
-  // req.query là đối tượng chứa tham số được gửi qua url vd: page, limit
-  // /api/products?page=2&limit=5
-  const page = parseInt(req.query.page) || 1; // Trang hiện tại, mặc định là 1
-  const limit = parseInt(req.query.limit) || 5; // Số sản phẩm mỗi trang, mặc định là 5
-  const skip = (page - 1) * limit; // Số lượng sản phẩm cần bỏ qua
-
   const products = await Product.find({ isDisplay: true })
-    .populate("brand")
-    .populate("category")
-    .sort({ createdAt: -1 })
+    // .populate("brand")
+    // .populate("category")
+    .sort({ id: -1 })
     .exec();
-  // const products = await Product.find({isDisplay: true}).populate("brand").skip(skip).limit(limit);
-  // const products = await WarehouseReceipt.find().populate({
-  //   path: "products.product",
-  //   populate: [
-  //     {path: "brand", select: "name",},
-  //     {path: "category", select: "name"}
-  //   ],
-  // });
 
   const totalProducts = await Product.countDocuments(); // Tổng số sản phẩm
 
   return res.status(200).json({
     success: products ? true : false,
     products: products ? products : "Cannot get products!",
-    currentPage: page,
     totalProducts,
-    totalPages: Math.ceil(totalProducts / limit), // Làm tròn đến số nguyên gần nhất vd 4.3 ==> 5
   });
 });
 // get list product status in_stock
@@ -272,7 +259,7 @@ const getAllProductWithStatus_OUT_OF_STOCK = asyncHandler(async (req, res) => {
   });
 });
 //  change is display
-const changeIsDisplay = asyncHandler(async (req, res) => {
+const changeIsDisplay = expressAsyncHandler(async (req, res) => {
   const { pid } = req.params;
   const isDisplay = await Product.findByIdAndUpdate(
     pid,
@@ -352,12 +339,13 @@ const productByAllReceipt = expressAsyncHandler(async (req, res) => {
       })
       .sort({ createdAt: -1 })
       .exec();
-
     // Lọc và tính toán số lượng sản phẩm từ các phiếu
     const products = receipts.flatMap((receipt) =>
       receipt.products.map((item) => {
         const convertQuantity = item.unit?.convertQuantity || 1; // Lấy hệ số quy đổi
-        const calculatedQuantity = item.quantityDynamic ? item.quantity * convertQuantity : 0; // Tính toán số lượng
+        const calculatedQuantity = item.quantityDynamic
+          ? item.quantity * convertQuantity
+          : 0; // Tính toán số lượng
 
         const product = item.product || {};
         const price = product.price || 0; // Giá sản phẩm từ product
@@ -366,6 +354,7 @@ const productByAllReceipt = expressAsyncHandler(async (req, res) => {
         const importPrice = item.importPrice || 0; // Giá nhập vào
 
         return {
+          expires: item.expires,
           idPNK: receipt.idPNK,
           images: product.images || [], // Nếu không có hình ảnh, trả về mảng rỗng
           title: product.title || "N/A", // Tiêu đề mặc định nếu không có
@@ -376,7 +365,9 @@ const productByAllReceipt = expressAsyncHandler(async (req, res) => {
           importPrice: importPrice, // Thêm importPrice vào kết quả
           _id: product._id,
           warehouseReceipt: receipt._id,
-          quantityDynamic: item.quantityDynamic || 0
+          quantityDynamic: item.quantityDynamic || 0,
+          id: product.id,
+          sumQuantity: product.sumQuantity,
         };
       })
     );
@@ -393,8 +384,6 @@ const productByAllReceipt = expressAsyncHandler(async (req, res) => {
     });
   }
 });
-
-// 
 
 const filterProductByName = expressAsyncHandler(async (req, res) => {
   const { title } = req.body;
@@ -416,7 +405,6 @@ const filterProductByName = expressAsyncHandler(async (req, res) => {
     products: products.length > 0 ? products : "Cannot get products",
   });
 });
-
 
 const filterProductByStatus = expressAsyncHandler(async (req, res) => {
   const { status } = req.body;
@@ -449,8 +437,8 @@ const filterProductByBrand = expressAsyncHandler(async (req, res) => {
       products: [],
     });
   }
-  const brand = await Brand.findOne({name: brandName})
-  const products = await Product.find({brand: brand._id })
+  const brand = await Brand.findOne({ name: brandName });
+  const products = await Product.find({ brand: brand._id })
     .populate("brand")
     .populate("category");
 
@@ -459,16 +447,20 @@ const filterProductByBrand = expressAsyncHandler(async (req, res) => {
     products: products.length > 0 ? products : "Cannot get products",
   });
 });
-// 
+//
 const filterProductMultiCondition = expressAsyncHandler(async (req, res) => {
-  const { title, status, brandName, categoryName } = req.body;
+  const { title, status, brandName, categoryName, id } = req.body;
 
   // Initialize an empty query object
   const query = {};
 
   // Check for title and add to query if not empty
   if (title && title.trim() !== "") {
-    query.title = { $regex: title, $options: "i" };
+    // query.title = { $regex: title, $options: "i" };
+    query.$and = [
+      { title: { $regex: title, $options: "i" } },
+      { isDisplay: true },
+    ];
   }
 
   // Check for status and add to query if not empty
@@ -478,7 +470,7 @@ const filterProductMultiCondition = expressAsyncHandler(async (req, res) => {
 
   // Check for brandName and add to query if not empty
   if (brandName && brandName.trim() !== "") {
-    const brand = await Brand.findOne({ name: brandName });
+    const brand = await Brand.findOne({ name: brandName, isDisplay: true });
     if (brand) {
       query.brand = brand._id; // Add brand ID to query if brand exists
     } else {
@@ -489,10 +481,26 @@ const filterProductMultiCondition = expressAsyncHandler(async (req, res) => {
       });
     }
   }
+  query.isDisplay = true;
   if (categoryName && categoryName.trim() !== "") {
-    const category = await Category.findOne({ name: categoryName });
+    const category = await Category.findOne({
+      name: categoryName,
+      isDisplay: true,
+    });
     if (category) {
       query.category = category._id; // Add brand ID to query if brand exists
+    } else {
+      // If brand is not found, return empty results
+      return res.status(200).json({
+        success: true,
+        products: [],
+      });
+    }
+  }
+  if (id && id !== "") {
+    const product = await Product.findOne({ id: id, isDisplay: true });
+    if (product) {
+      query.id = product.id; // Add brand ID to query if brand exists
     } else {
       // If brand is not found, return empty results
       return res.status(200).json({
@@ -521,15 +529,14 @@ const filterProductMultiCondition = expressAsyncHandler(async (req, res) => {
   });
 });
 // filter price by name
-const filterPriceByProductName = expressAsyncHandler(async(req, res) => {
-  const {title} = req.body
-  const product = await Product.findOne({title})
+const filterPriceByProductName = expressAsyncHandler(async (req, res) => {
+  const { title } = req.body;
+  const product = await Product.findOne({ title });
   return res.status(200).json({
     success: product ? true : false,
-    product: product ? product : "Cannot get product"
-  })
-})
-
+    product: product ? product : "Cannot get product",
+  });
+});
 
 // pagination product
 const getAllProductsPagination = asyncHandler(async (req, res) => {
@@ -541,7 +548,12 @@ const getAllProductsPagination = asyncHandler(async (req, res) => {
     const currentLimit = parseInt(limit) || 5;
 
     if (currentPage < 1 || currentLimit < 1) {
-      return res.status(400).json({ success: false, message: 'Page and limit must be greater than 0' });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Page and limit must be greater than 0",
+        });
     }
 
     const skip = (currentPage - 1) * currentLimit;
@@ -564,7 +576,9 @@ const getAllProductsPagination = asyncHandler(async (req, res) => {
       totalPages: Math.ceil(totalProducts / currentLimit),
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 });
 
@@ -606,7 +620,7 @@ const getAllProductsPagination = asyncHandler(async (req, res) => {
 //     if (existingProduct) {
 //       // Cập nhật quantity của phiếu nhập kho
 //       existingProduct.quantity += quantity;
-      
+
 //       // Cập nhật sumQuantity cho tất cả các phiếu cùng sản phẩm
 //       shelf.products.forEach(p => {
 //         if (p.product.toString() === product) {
@@ -674,26 +688,45 @@ const addProductToShelf = expressAsyncHandler(async (req, res) => {
   }
 
   for (const { product, quantity, warehouseReceipt } of products) {
-    if (!mongoose.Types.ObjectId.isValid(product) || !mongoose.Types.ObjectId.isValid(warehouseReceipt)) {
-      return res.status(400).json({ message: `ID sản phẩm hoặc phiếu nhập kho không hợp lệ` });
+    if (
+      !mongoose.Types.ObjectId.isValid(product) ||
+      !mongoose.Types.ObjectId.isValid(warehouseReceipt)
+    ) {
+      return res
+        .status(400)
+        .json({ message: `ID sản phẩm hoặc phiếu nhập kho không hợp lệ` });
     }
 
     const receipt = await WarehouseReceipt.findById(warehouseReceipt);
     if (!receipt) {
-      return res.status(404).json({ message: `Không tìm thấy phiếu nhập kho: ${warehouseReceipt}` });
+      return res
+        .status(404)
+        .json({
+          message: `Không tìm thấy phiếu nhập kho: ${warehouseReceipt}`,
+        });
     }
 
-    const productInReceipt = receipt.products.find(p => p.product.toString() === product);
+    const productInReceipt = receipt.products.find(
+      (p) => p.product.toString() === product
+    );
     if (!productInReceipt) {
-      return res.status(400).json({ message: `Sản phẩm không có trong phiếu nhập kho: ${product}` });
+      return res
+        .status(400)
+        .json({
+          message: `Sản phẩm không có trong phiếu nhập kho: ${product}`,
+        });
     }
 
     if (quantity > productInReceipt.quantityDynamic) {
-      return res.status(400).json({ message: "Số lượng yêu cầu vượt quá số lượng có sẵn" });
+      return res
+        .status(400)
+        .json({ message: "Số lượng yêu cầu vượt quá số lượng có sẵn" });
     }
 
     const existingProduct = shelf.products.find(
-      (p) => p.product.toString() === product && p.warehouseReceipt.toString() === warehouseReceipt
+      (p) =>
+        p.product.toString() === product &&
+        p.warehouseReceipt.toString() === warehouseReceipt
     );
 
     if (existingProduct) {
@@ -701,7 +734,7 @@ const addProductToShelf = expressAsyncHandler(async (req, res) => {
       existingProduct.quantity += quantity;
 
       // Cập nhật sumQuantity cho tất cả các phiếu cùng sản phẩm
-      shelf.products.forEach(p => {
+      shelf.products.forEach((p) => {
         if (p.product.toString() === product) {
           p.sumQuantity += quantity; // Cộng dồn vào sumQuantity
         }
@@ -709,7 +742,9 @@ const addProductToShelf = expressAsyncHandler(async (req, res) => {
     } else {
       const productInfo = await Product.findById(product);
       if (!productInfo) {
-        return res.status(404).json({ message: `Không tìm thấy sản phẩm: ${product}` });
+        return res
+          .status(404)
+          .json({ message: `Không tìm thấy sản phẩm: ${product}` });
       }
 
       shelf.products.push({
@@ -733,7 +768,9 @@ const addProductToShelf = expressAsyncHandler(async (req, res) => {
     if (productInStore) {
       productInStore.quantity -= quantity;
       if (productInStore.quantity < 0) {
-        return res.status(400).json({ message: `Số lượng sản phẩm trong kho không đủ` });
+        return res
+          .status(400)
+          .json({ message: `Số lượng sản phẩm trong kho không đủ` });
       }
       await productInStore.save();
     }
@@ -759,12 +796,111 @@ const addProductToShelf = expressAsyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: "Sản phẩm đã được thêm vào kệ thành công với sumQuantity được đồng bộ",
+    message:
+      "Sản phẩm đã được thêm vào kệ thành công với sumQuantity được đồng bộ",
     shelf: updatedShelf,
   });
 });
 
+const filterProductSumQuantity = expressAsyncHandler(async (req, res) => {
+  const products = await Product.find({ quantity: { $gte: 1 } });
+  return res.status(200).json({
+    success: products ? true : false,
+    products: products ? products : "Cannot get products",
+  });
+});
 
+const filterProductById = expressAsyncHandler(async (req, res) => {
+  if (!req.body || Object.keys(req.body).length === 0)
+    throw new Error("Missing input");
+  const { id } = req.body;
+  const products = await Product.find({ id });
+  return res.status(200).json({
+    success: products ? true : false,
+    products: products ? products : "Cannot get products",
+  });
+});
+
+const filterReceiptByProduct = expressAsyncHandler(async (req, res) => {
+  // Kiểm tra input
+  if (!req.body || !req.body.title) {
+    return res
+      .status(400)
+      .json({ success: false, mes: "Product title is required!" });
+  }
+
+  const { title } = req.body;
+
+  // Tìm sản phẩm theo tên
+  const product = await Product.findOne({ title: title });
+
+  // Kiểm tra nếu sản phẩm không tồn tại
+  if (!product) {
+    return res.status(404).json({
+      success: false,
+      mes: "Product not found",
+    });
+  }
+
+  // Lấy tất cả các phiếu nhập kho có chứa sản phẩm này
+  const warehouseReceipts = await WarehouseReceipt.find({
+    "products.product": product._id, // Lọc theo sản phẩm này trong các phiếu nhập kho
+  }).populate({
+    path: "products.product", // Lọc thông tin sản phẩm trong phiếu nhập kho
+    select: "_id title", // Lấy thông tin cần thiết từ sản phẩm
+  });
+
+  // Lọc các phiếu nhập kho có quantity > 0
+  const filteredReceipts = warehouseReceipts.filter((receipt) => {
+    return receipt.products.some((productItem) => {
+      return (
+        productItem.product._id.toString() === product._id.toString() &&
+        productItem.quantityDynamic > 0
+      );
+    });
+  });
+
+  // Kiểm tra nếu có phiếu nhập kho thỏa mãn
+  if (filteredReceipts.length > 0) {
+    return res.status(200).json({
+      success: true,
+      receipts: filteredReceipts.map((receipt) => ({
+        _id: receipt._id,
+        idPNK: receipt.idPNK, // Trả về idPNK của phiếu nhập kho
+        products: receipt.products.filter(
+          (productItem) =>
+            productItem.product._id.toString() === product._id.toString()
+        ),
+      })),
+    });
+  } else {
+    return res.status(404).json({
+      success: false,
+      mes: "No receipts found with product quantity greater than 0",
+    });
+  }
+});
+
+const lastIdNumber = expressAsyncHandler(async (req, res) => {
+  try {
+    // Truy vấn sản phẩm có id cao nhất
+    const lastProduct = await Product.findOne().sort({ id: -1 }).limit(1);
+
+    // Nếu không có sản phẩm nào, đặt id đầu tiên là 1
+    const newId = lastProduct ? lastProduct.id + 1 : 1;
+
+    // Trả về id mới
+    res.status(200).json({
+      success: true,
+      newId,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Lỗi khi lấy id cuối cùng: " + error.message,
+    });
+  }
+});
 module.exports = {
   createProduct,
   getProduct,
@@ -785,5 +921,9 @@ module.exports = {
   filterProductMultiCondition,
   filterPriceByProductName,
   getAllProductsPagination,
-  updatePriceProduct
+  updatePriceProduct,
+  filterProductSumQuantity,
+  filterProductById,
+  filterReceiptByProduct,
+  lastIdNumber
 };

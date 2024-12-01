@@ -33,7 +33,7 @@ const createBrand = asyncHandle(async (req, res) => {
 // get list brand
 const getBrands = async (req, res) => {
   try {
-    const brands = await Brand.find().sort({ createdAt: -1 }).exec();
+    const brands = await Brand.find().sort({ id: -1 }).exec();
     return res.status(200).json({
       success: brands ? true : false,
       brands: brands ? brands : "Cannot get brand!",
@@ -79,7 +79,7 @@ const filterCategoryByBrand = expressAsyncHandler(async (req, res) => {
 });
 // filter brand by multi condition
 const filterBrandByMultiCondition = expressAsyncHandler(async (req, res) => {
-  const { name, phone, supplyName } = req.body;
+  const { name, phone, supplyName, id } = req.body;
   const query = {};
   if (name) {
     query.name = { $regex: name, $options: "i" };
@@ -90,6 +90,9 @@ const filterBrandByMultiCondition = expressAsyncHandler(async (req, res) => {
   if (supplyName) {
     query.supplyName = { $regex: supplyName, $options: "i" };
   }
+  if(id){
+    query.id = id
+  }
   const brands = await Brand.find(query);
   return res.status(200).json({
     success: true,
@@ -97,9 +100,40 @@ const filterBrandByMultiCondition = expressAsyncHandler(async (req, res) => {
   });
 });
 
+const updateBrand = expressAsyncHandler(async (req, res) => {
+  const { pid } = req.body;
+  const updateBrand = await Brand.findByIdAndUpdate(pid, req.body, {
+    new: true,
+  });
+  return res.status(200).json({
+    success: updateBrand ? true : false,
+    updateBrand: updateBrand ? updateBrand : "Cannot update product!",
+  });
+});
+
+const lastIdNumber = expressAsyncHandler(async (req, res) => {
+  try {
+    // Truy vấn sản phẩm có id cao nhất
+    const lastProduct = await Brand.findOne().sort({ id: -1 }).limit(1);
+    // Nếu không có sản phẩm nào, đặt id đầu tiên là 1
+    const newId = lastProduct ? lastProduct.id + 1 : 1;
+    // Trả về id mới
+    res.status(200).json({
+      success: true,
+      newId,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Lỗi khi lấy id cuối cùng: " + error.message,
+    });
+  }
+});
 module.exports = {
   createBrand,
   getBrands,
   filterCategoryByBrand,
   filterBrandByMultiCondition,
+  updateBrand,
+  lastIdNumber
 };

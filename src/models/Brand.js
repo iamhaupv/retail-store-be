@@ -6,6 +6,7 @@ var brandSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      require: true
     },
     supplyName: {
       type: String,
@@ -17,8 +18,12 @@ var brandSchema = new mongoose.Schema(
     description: { type: String, trim: true },
     images: {
       type: Array,
-      // type: String
     },
+    id: {
+      type: Number,
+      require: true,
+      unique: true
+    }
   },
   {
     timestamps: true,

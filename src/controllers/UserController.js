@@ -1,6 +1,5 @@
-const { User } = require("../models/index");
+const { User, Employee } = require("../models/index");
 const asyncHandler = require("express-async-handler");
-const cloudinary = require('cloudinary')
 const {
   generateAccessToken,
   generateRefreshToken,
@@ -25,38 +24,58 @@ const crypto = require("crypto");
 //     data: newUser,
 //   });
 // });
-const register = asyncHandler(async (req, res) => {
-  const { email, password, firstname, lastname } = req.body;
+// const register = asyncHandler(async (req, res) => {
+//   const { email, password, firstname, lastname } = req.body;
 
-  if (!email || !password || !firstname || !lastname) {
+//   if (!email || !password || !firstname || !lastname) {
+//     return res.status(400).json({
+//       success: false,
+//       mes: "Missing inputs",
+//     });
+//   }
+
+//   const user = await User.findOne({ email });
+//   if (user) throw new Error("User existed");
+
+//   // Tạo username
+//   const firstInitial = firstname.charAt(0).toUpperCase(); // Chữ cái đầu tiên của firstname
+//   const lastInitials = lastname
+//     .toUpperCase()
+//     .split(" ")
+//     .map((word) => word.charAt(0))
+//     .join(""); // Chữ cái đầu tiên của từng từ trong lastname
+//   const baseUsername = firstInitial + lastInitials; // Kết hợp lại
+//   let username = baseUsername;
+//   let count = 1;
+
+//   // Kiểm tra trùng lặp và tạo username duy nhất
+//   while (await User.findOne({ username })) {
+//     username = `${baseUsername}${count}`;
+//     count++;
+//   }
+
+//   // Tạo user mới với username duy nhất
+//   const newUser = await User.create({ ...req.body, username });
+
+//   return res.status(200).json({
+//     success: newUser ? true : false,
+//     mes: newUser ? "Register successfully!" : "Something went wrong!",
+//     data: newUser,
+//   });
+// });
+
+const register = asyncHandler(async (req, res) => {
+  const { email, name, phone } = req.body;
+  if (!email || !name || !phone) {
     return res.status(400).json({
       success: false,
       mes: "Missing inputs",
     });
   }
-
-  const user = await User.findOne({ email });
+  const password = 1
+  const user = await User.findOne({ $or: [{ email: email }, { phone: phone }] });
   if (user) throw new Error("User existed");
-
-  // Tạo username
-  const firstInitial = firstname.charAt(0).toUpperCase(); // Chữ cái đầu tiên của firstname
-  const lastInitials = lastname
-    .toUpperCase()
-    .split(" ")
-    .map((word) => word.charAt(0))
-    .join(""); // Chữ cái đầu tiên của từng từ trong lastname
-  const baseUsername = firstInitial + lastInitials; // Kết hợp lại
-  let username = baseUsername;
-  let count = 1;
-
-  // Kiểm tra trùng lặp và tạo username duy nhất
-  while (await User.findOne({ username })) {
-    username = `${baseUsername}${count}`;
-    count++;
-  }
-
-  // Tạo user mới với username duy nhất
-  const newUser = await User.create({ ...req.body, username });
+  const newUser = await User.create({password, ...req.body });
 
   return res.status(200).json({
     success: newUser ? true : false,
@@ -101,7 +120,7 @@ const login = asyncHandler(async (req, res) => {
 // get user by id
 const getCurrent = asyncHandler(async (req, res) => {
   const { _id } = req.user;
-  const user = await User.findById(_id).select("-refreshToken -role");
+  const user = await User.findById(_id).select("-refreshToken").populate("employee");
   return res.status(200).json({
     success: user ? true : false,
     rs: user ? user : "User not found",
@@ -275,39 +294,214 @@ const checkPassword = asyncHandler(async (req, res) => {
   }
 });
 
+
+// const updateInfor = asyncHandler(async (req, res) => {
+//   const { id, name, email, phone, address, birthday, gender, image } = req.body;
+
+//   try {
+//     // Tìm người dùng theo ID
+//     const user = await User.findById(id);
+//     if (!user) {
+//       return res.status(404).json({ success: false, message: "User not found" });
+//     }
+
+//     // Cập nhật thông tin User
+//     user.name = name || user.name;
+//     user.email = email || user.email;
+//     user.phone = phone || user.phone;
+//     user.address = address || user.address;
+//     user.birthday = birthday || user.birthday;
+//     user.gender = gender || user.gender;
+
+//     // Cập nhật hình ảnh nếu có
+//     if (req.file && req.file.path) {
+//       user.image = req.file.path;
+//     }
+
+//     // Lưu User
+//     await user.save();
+
+//     console.log("User after update:", user);
+
+//     // Cập nhật thông tin Employee (nếu có)
+//     if (user.employee) {
+//       const updatedEmployeeData = {
+//         name: name || user.name,  // Sử dụng thông tin từ user nếu có thay đổi
+//         email: email || user.email,
+//         phone: phone || user.phone,
+//         address: address || user.address
+//       };
+
+//       // Debug: Kiểm tra dữ liệu trước khi cập nhật
+//       console.log("Current Employee ID:", user.employee);
+//       const employee = await Employee.findById(user.employee);
+//       if (!employee) {
+//         return res.status(404).json({
+//           success: false,
+//           message: "Employee not found",
+//         });
+//       }
+
+//       console.log("Current Employee Data:", employee);
+//       console.log("Updated Employee Data:", updatedEmployeeData);
+
+//       // Cập nhật thông tin của Employee liên kết với User
+//       const updatedEmployee = await Employee.findByIdAndUpdate(
+//         user.employee,
+//         updatedEmployeeData,
+//         { new: true }
+//       );
+
+//       // Debug: In ra Employee đã được cập nhật
+//       console.log("Updated Employee:", updatedEmployee);
+
+//       // Kiểm tra nếu Employee không được cập nhật (sự thay đổi không được lưu)
+//       if (!updatedEmployee) {
+//         return res.status(500).json({
+//           success: false,
+//           message: "Failed to update employee information",
+//         });
+//       }
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       user,
+//     });
+//   } catch (error) {
+//     console.error("Error updating user information:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Failed to update user information",
+//       error: error.message,
+//     });
+//   }
+// });
+
+
+
+// const updateInfor = asyncHandler(async (req, res) => {
+//   const { id, name, phone, email, address, birthday, gender } = req.body;
+//   try {
+//     const user = await User.findById(id);
+//     if (!user) {
+//       return res.status(404).json({ success: false, message: "User not found" });
+//     }
+//     if (user.employee) {
+//       const updatedEmployeeData = {
+//         name: name,  
+//         email: email,
+//         phone: phone,
+//         address: address,
+//         birthday: birthday,
+//         gender: gender
+//       };
+//       if (req.file && req.file.path) {
+//         updatedEmployeeData.images = [req.file.path];
+//       }
+//       const employee = await Employee.findById(user.employee);
+//       if (!employee) {
+//         return res.status(404).json({
+//           success: false,
+//           message: "Employee not found",
+//         });
+//       }
+//       const updatedEmployee = await Employee.findByIdAndUpdate(
+//         user.employee,
+//         updatedEmployeeData,
+//         { new: true }
+//       );
+//       if (!updatedEmployee) {
+//         return res.status(500).json({
+//           success: false,
+//           message: "Failed to update employee information",
+//         });
+//       }
+//     }
+//     return res.status(200).json({
+//       success: true,
+//       user,
+//     });
+//   } catch (error) {
+//     console.error("Error updating user information:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Failed to update user information",
+//       error: error.message,
+//     });
+//   }
+// });
+
 const updateInfor = asyncHandler(async (req, res) => {
-  const { id, firstname, lastname, email, mobile, username, address, birthday, gender } = req.body;
+  const { id, name, phone, email, address, birthday, gender } = req.body;
 
   try {
-    // Tìm người dùng theo ID
+    // Step 1: Find the user by ID
     const user = await User.findById(id);
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    // Cập nhật các trường người dùng (chỉ cập nhật các trường có giá trị mới)
-    user.firstname = firstname || user.firstname;
-    user.lastname = lastname || user.lastname;
-    user.email = email || user.email;
-    user.mobile = mobile || user.mobile;
-    user.username = username || user.username;
-    user.address = address || user.address;
-    user.birthday = birthday || user.birthday;
-    user.gender = gender || user.gender;
+    // Step 2: Check if the user has an associated employee
+    if (user.employee) {
+      // Step 3: Prepare the updated employee data
+      const updatedEmployeeData = {
+        name,
+        email,
+        phone,
+        address,
+        birthday,
+        gender
+      };
 
-    // Nếu có ảnh mới được upload, chỉ cập nhật lại URL ảnh mới
-    if (req.file && req.file.path) {
-      // Cập nhật URL ảnh mới vào trường `image`
-      user.image = req.file.path; // Đây là URL ảnh mới
+      // Step 4: Handle the uploaded file (image) if exists
+      if (req.file && req.file.path) {
+        updatedEmployeeData.images = [req.file.path]; // Assuming you want to store images as an array
+      }
+
+      // Step 5: Find and update the employee document
+      const employee = await Employee.findById(user.employee);
+      if (!employee) {
+        return res.status(404).json({
+          success: false,
+          message: "Employee not found",
+        });
+      }
+
+      // Step 6: Update the employee record with the new data
+      const updatedEmployee = await Employee.findByIdAndUpdate(
+        user.employee,
+        updatedEmployeeData,
+        { new: true } // Return the updated employee document
+      );
+
+      if (!updatedEmployee) {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to update employee information",
+        });
+      }
+
+      // Step 7: Update the user's email if necessary
+      user.email = email;  // Update the user's email with the new email
+      await user.save();   // Save the updated user
+
+      // Step 8: Return the updated user and employee data in the response
+      return res.status(200).json({
+        success: true,
+        user: {
+          ...user.toObject(),
+          employee: updatedEmployee,  // Include the updated employee data
+        },
+      });
     }
 
-    // Lưu lại thông tin người dùng đã cập nhật
-    await user.save();
-
-    return res.status(200).json({
-      success: true,
-      user,
+    // Step 9: If user does not have an associated employee, handle accordingly
+    return res.status(400).json({
+      success: false,
+      message: "User has no associated employee.",
     });
+
   } catch (error) {
     console.error("Error updating user information:", error);
     return res.status(500).json({
@@ -317,6 +511,8 @@ const updateInfor = asyncHandler(async (req, res) => {
     });
   }
 });
+
+
 
 
 module.exports = {

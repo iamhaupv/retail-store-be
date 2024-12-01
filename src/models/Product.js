@@ -6,21 +6,21 @@ var productSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      unique: true
     },
-    slug: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-    },
+    // slug: {
+    //   type: String,
+    //   required: true,
+    //   unique: true,
+    //   lowercase: true,
+    // },
     description: {
       type: String,
     },
-    expires: {
-      type: String,
-    },
+    // expires: {
+    //   type: String,
+    // },
     brand: { type: mongoose.Types.ObjectId, ref: "Brand" },
-    shelf: [{ type: mongoose.Types.ObjectId, ref: "Shelf" }],
     warehouseReceipt: [{ type: mongoose.Types.ObjectId, ref: "WarehouseReceipt" }],
     price: {
       type: Number,
@@ -47,8 +47,16 @@ var productSchema = new mongoose.Schema(
     images: {
       type: Array,
     },
-    sumQuantity: {
+    // sumQuantity: {
+    //   type: Number
+    // },
+    VAT:{
       type: Number
+    },
+    id:{
+      type: Number,
+      unique: true,
+      required: true,
     }
   },
   {

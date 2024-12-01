@@ -208,7 +208,7 @@ const filterProductByShelf = expressAsyncHandler(async (req, res) => {
     const shelves = await Shelf.find({ name })
       .populate({
         path: "products.product",
-        select: "images title", // Chỉ lấy thông tin cần thiết từ Product
+        select: "images title id", 
       })
       .populate({
         path: "products.warehouseReceipt", // Populate thông tin phiếu nhập kho
@@ -218,7 +218,6 @@ const filterProductByShelf = expressAsyncHandler(async (req, res) => {
     if (shelves.length === 0) {
       return res.status(404).json({ message: "No shelves found with this name" });
     }
-
     // Lưu kết quả sản phẩm từ kệ
     const result = [];
 
@@ -241,12 +240,14 @@ const filterProductByShelf = expressAsyncHandler(async (req, res) => {
 
         // Thêm sản phẩm vào kết quả
         result.push({
+          _id: item.product._id,
           idPNK: warehouseReceipt ? warehouseReceipt.idPNK : null,
           images: item.product.images,
           title: item.product.title,
           expires,
           quantity, // Số lượng hiện tại
-          sumQuantity, // Tổng số lượng từ kệ
+          sumQuantity,
+          id: item.product.id // Tổng số lượng từ kệ
         });
       }
     }

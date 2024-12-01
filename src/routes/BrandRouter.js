@@ -8,4 +8,6 @@ router.post("/", [verifyAccessToken, isAdmin], uploader.array("images", 10),Bran
 router.get("/", [verifyAccessToken], BrandController.getBrands)
 router.post("/filter-brand-by-multi-condition", [verifyAccessToken, isAdmin], BrandController.filterBrandByMultiCondition)
 router.post("/filter-category-by-brand", [verifyAccessToken, isAdmin], BrandController.filterCategoryByBrand)
+router.get("/last-id-number", [verifyAccessToken, isAdmin], BrandController.lastIdNumber)
+router.put("/", [verifyAccessToken, isAdmin], uploader.array("images", 10), BrandController.updateBrand)
 module.exports = router

@@ -14,29 +14,36 @@ router.put("/", [verifyAccessToken, isAdmin], uploader.array("images", 10), Prod
 // change is display
 router.put("/is-display/:pid", [verifyAccessToken, isAdmin], ProductController.changeIsDisplay)
 // get list products
-router.get("/products", [verifyAccessToken, isAdmin], ProductController.getAllProducts)
+router.get("/products", [verifyAccessToken], ProductController.getAllProducts)
 // get list product with status in_stock
-router.get("/in_stock", [verifyAccessToken, isAdmin], ProductController.getAllProductWithStatus_IN_STOCK)
+router.get("/in_stock", [verifyAccessToken], ProductController.getAllProductWithStatus_IN_STOCK)
 // get list product with status out_of_stock
-router.get("/out_of_stock", [verifyAccessToken, isAdmin], ProductController.getAllProductWithStatus_OUT_OF_STOCK)
+router.get("/out_of_stock", [verifyAccessToken], ProductController.getAllProductWithStatus_OUT_OF_STOCK)
 // get list product by brand
-router.post("/filter-by-brand", [verifyAccessToken, isAdmin], ProductController.productFilterByBrandName)
+router.post("/filter-by-brand", [verifyAccessToken], ProductController.productFilterByBrandName)
 // 
-router.get("/filter-all-product-by-receipt", [verifyAccessToken, isAdmin], ProductController.productByAllReceipt)
+router.get("/filter-all-product-by-receipt", [verifyAccessToken], ProductController.productByAllReceipt)
 //
-router.post("/filter-product-multi-condition", [verifyAccessToken, isAdmin], ProductController.filterProductMultiCondition)
+router.post("/filter-product-multi-condition", [verifyAccessToken], ProductController.filterProductMultiCondition)
 // 
-router.post("/filter-product-by-status", [verifyAccessToken, isAdmin], ProductController.filterProductByStatus)
+router.post("/filter-product-by-status", [verifyAccessToken], ProductController.filterProductByStatus)
 //
 router.patch("/update-price", [verifyAccessToken, isAdmin], ProductController.updatePriceProduct)
 //
-router.post("/filter-product-by-name", [verifyAccessToken, isAdmin], ProductController.filterProductByName) 
+router.get("/product-sumquantity", [verifyAccessToken], ProductController.filterProductSumQuantity)
+router.get("/last-id-number", [verifyAccessToken, isAdmin], ProductController.lastIdNumber)
+//
+router.post("/filter-id", [verifyAccessToken], ProductController.filterProductById)
+//
+router.post("/filter-product-by-name", [verifyAccessToken], ProductController.filterProductByName) 
 // 
-router.post("/filter-product-by-brand", [verifyAccessToken, isAdmin], ProductController.filterProductByBrand) 
+router.post("/filter-product-by-brand", [verifyAccessToken], ProductController.filterProductByBrand) 
+//
+router.post("/list-receipts", [verifyAccessToken], ProductController.filterReceiptByProduct)
 //
 router.post("/filter-price-by-product-name", [verifyAccessToken], ProductController.filterPriceByProductName)
 //
-router.post("/product-pagination", [verifyAccessToken, isAdmin], ProductController.getAllProductsPagination) 
+router.post("/product-pagination", [verifyAccessToken], ProductController.getAllProductsPagination) 
 //
 router.post("/add-product-to-shelf", [verifyAccessToken, isAdmin], ProductController.addProductToShelf)
 // get product by id
