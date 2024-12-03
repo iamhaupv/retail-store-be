@@ -6,4 +6,5 @@ router.post("/create-unit", [verifyAccessToken, isAdmin], UnitController.createU
 router.post("/filter-unit-by-name", [verifyAccessToken], UnitController.filterUnitByName)
 router.post("/filter-convert-quantity-by-unit-name", [verifyAccessToken], UnitController.filterConvertQuantityByUnitName)
 router.get("/", [verifyAccessToken], UnitController.getAllUnit)
+router.put("/", [verifyAccessToken, isAdmin], UnitController.updateUnit)
 module.exports = router

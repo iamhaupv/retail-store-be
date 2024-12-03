@@ -35,7 +35,8 @@ var orderSchema = new mongoose.Schema(
     },
     id: {
       type: Number,
-      unique: true
+      unique: true,
+      require: true
     }
   },
   {

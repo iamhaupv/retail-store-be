@@ -9,4 +9,5 @@ router.post("/filter-by-emloyee-name", [verifyAccessToken, isAdmin], OrderContro
 router.post("/filter-by-date", [verifyAccessToken, isAdmin], OrderController.filterOrderByDate)
 router.post("/filter-by-condition", [verifyAccessToken], OrderController.filterOrders)
 router.get("/sum", [verifyAccessToken, isAdmin], OrderController.sumTotalAmount)
+router.post("/income-day", [verifyAccessToken], OrderController.getTotalAmountAndVAT)
 module.exports = router

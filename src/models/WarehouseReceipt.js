@@ -18,6 +18,7 @@ var warehouseReceiptSchema = new mongoose.Schema(
         expires: { type: Date, required: true },
         unit: { type: mongoose.Types.ObjectId, ref: "Unit", required: true },
         quantityDynamic: { type: Number, required: true },
+        // convertQuantity: {type: Number, required: true}
       },
     ],
   },

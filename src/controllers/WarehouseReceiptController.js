@@ -264,6 +264,16 @@ const filterByIdPNK = expressAsyncHandler(async (req, res) => {
         path: "employee",
         select: "name"
       })
+    }).populate({
+      path: "products.product",
+      select: "brand title",
+      populate: {
+        path: "brand", 
+        select: "name address phone"
+      }
+    }).populate({
+      path: "products.unit",
+      select: "convertQuantity name"
     });
     return res.status(200).json({
       success: true,
@@ -291,9 +301,16 @@ const filterReceiptByDate = expressAsyncHandler(async (req, res) => {
 
   if (startDate && endDate) {
     // Chuyển đổi startDate và endDate thành đối tượng Date
+    const start = convertToDate(startDate);
+    const end = convertToDate(endDate);
+    
+    // Đặt lại giờ cho ngày bắt đầu và ngày kết thúc
+    start.setHours(0, 0, 0, 0); // Ngày bắt đầu từ 00:00:00
+    end.setHours(23, 59, 59, 999); // Ngày kết thúc đến 23:59:59.999
+    
     query.createdAt = {
-      $gte: convertToDate(startDate), // Ngày bắt đầu
-      $lte: convertToDate(endDate), // Ngày kết thúc
+      $gte: start, // Ngày bắt đầu
+      $lte: end,   // Ngày kết thúc
     };
   }
 
@@ -305,6 +322,16 @@ const filterReceiptByDate = expressAsyncHandler(async (req, res) => {
         path: "employee",
         select: "name"
       }
+    }).populate({
+      path: "products.product",
+      select: "title brand",
+      populate: {
+        path: "brand",
+        select: "name address phone"
+      }
+    }).populate({
+      path: "products.unit",
+      select: "name convertQuantity"
     });
 
     return res.status(200).json({
@@ -318,6 +345,7 @@ const filterReceiptByDate = expressAsyncHandler(async (req, res) => {
     });
   }
 });
+
 
 // const getFilteredWarehouseReceipts = expressAsyncHandler(async (req, res) => {
 //   const { title, idPNK, category, brand } = req.body;
@@ -449,7 +477,7 @@ const getAllWarehouseReceipt = expressAsyncHandler(async (req, res) => {
     const receipts = await WarehouseReceipt.find({ isDisplay: true })
       .populate({
         path: "products.product",
-        select: "title expires brand importPrice",
+        select: "title expires brand  importPrice",
         populate: {
           path: "brand",
           select: "name phone address",
@@ -463,7 +491,10 @@ const getAllWarehouseReceipt = expressAsyncHandler(async (req, res) => {
           select: "name"
         }
       })
-      .populate("products.unit")
+      .populate({
+        path: "products.unit",
+        select: "name convertQuantity"
+      })
       .sort({ createdAt: -1 })
       .exec();
 
@@ -812,6 +843,168 @@ const getFilteredWarehouseReceipts = expressAsyncHandler(async (req, res) => {
 });
 
 
+const searchProductById = expressAsyncHandler(async (req, res) => {
+  try {
+    // Lấy id sản phẩm từ params hoặc body
+    const { productId } = req.body;
+
+    // Lấy tất cả các phiếu nhập kho và populate thông tin sản phẩm
+    const receipts = await WarehouseReceipt.find()
+      .populate({
+        path: "products.product",
+        populate: [
+          { path: "brand", select: "name" },
+          { path: "category", select: "name" },
+        ],
+      })
+      .populate({
+        path: "products.unit",
+        select: "convertQuantity",
+      })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    // Lọc sản phẩm và lấy thông tin của tất cả các mã phiếu
+    const products = receipts.flatMap((receipt) =>
+      receipt.products
+        .filter((item) => item.product?.id == productId) // Lọc sản phẩm theo productId
+        .map((item) => {
+          const convertQuantity = item.unit?.convertQuantity || 1; // Lấy hệ số quy đổi
+          const calculatedQuantity = item.quantityDynamic
+            ? item.quantity * convertQuantity
+            : 0; // Tính toán số lượng
+
+          const product = item.product || {};
+          const price = product.price || 0; // Giá sản phẩm từ product
+          const importPrice = item.importPrice || 0; // Giá nhập vào
+
+          return {
+            expires: item.expires,
+            idPNK: receipt.idPNK, // Mã phiếu
+            images: product.images || [], // Hình ảnh sản phẩm
+            title: product.title || "N/A", // Tiêu đề sản phẩm
+            category: product.category?.name || "N/A", // Loại sản phẩm
+            brand: product.brand?.name || "N/A", // Thương hiệu sản phẩm
+            quantity: calculatedQuantity, // Số lượng đã quy đổi
+            price: price, // Giá bán
+            importPrice: importPrice, // Giá nhập
+            warehouseReceipt: receipt._id, // ID phiếu nhập kho
+            quantityDynamic: item.quantityDynamic || 0, // Số lượng động
+            id: product.id, // Mã sản phẩm
+            sumQuantity: product.sumQuantity, // Tổng số lượng
+          };
+        })
+    );
+
+    // Kiểm tra xem sản phẩm có trong các phiếu nhập kho không
+    if (products.length > 0) {
+      return res.status(200).json({
+        success: true,
+        products: products,
+      });
+    } else {
+      return res.status(404).json({
+        success: false,
+        message: "Sản phẩm không tìm thấy trong các phiếu nhập kho.",
+      });
+    }
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Đã xảy ra lỗi trong quá trình xử lý.",
+    });
+  }
+});
+
+const searchProductByName = expressAsyncHandler(async (req, res) => {
+  try {
+    // Lấy productId hoặc title từ body
+    const { productId, title } = req.body;
+
+    // Kiểm tra xem có truyền productId hoặc title không
+    if (!productId && !title) {
+      return res.status(400).json({
+        success: false,
+        message: "Cần cung cấp mã sản phẩm hoặc tên sản phẩm để tìm kiếm.",
+      });
+    }
+
+    // Lấy tất cả các phiếu nhập kho và populate thông tin sản phẩm
+    const receipts = await WarehouseReceipt.find()
+      .populate({
+        path: "products.product",
+        populate: [
+          { path: "brand", select: "name" },
+          { path: "category", select: "name" },
+        ],
+      })
+      .populate({
+        path: "products.unit",
+        select: "convertQuantity",
+      })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    // Lọc sản phẩm theo productId hoặc title
+    const products = receipts.flatMap((receipt) =>
+      receipt.products
+        .filter((item) => {
+          // Lọc sản phẩm theo mã sản phẩm (productId) hoặc tên sản phẩm (title)
+          if (productId) {
+            return item.product?.id == productId; // Kiểm tra theo mã sản phẩm
+          } else if (title) {
+            return item.product?.title.toLowerCase() == title.toLowerCase(); // Kiểm tra theo tên sản phẩm (case-insensitive)
+          }
+        })
+        .map((item) => {
+          const convertQuantity = item.unit?.convertQuantity || 1; // Lấy hệ số quy đổi
+          const calculatedQuantity = item.quantityDynamic
+            ? item.quantity * convertQuantity
+            : 0; // Tính toán số lượng
+
+          const product = item.product || {};
+          const price = product.price || 0; // Giá sản phẩm từ product
+          const importPrice = item.importPrice || 0; // Giá nhập vào
+
+          return {
+            expires: item.expires,
+            idPNK: receipt.idPNK, // Mã phiếu
+            images: product.images || [], // Hình ảnh sản phẩm
+            title: product.title || "N/A", // Tiêu đề sản phẩm
+            category: product.category?.name || "N/A", // Loại sản phẩm
+            brand: product.brand?.name || "N/A", // Thương hiệu sản phẩm
+            quantity: calculatedQuantity, // Số lượng đã quy đổi
+            price: price, // Giá bán
+            importPrice: importPrice, // Giá nhập
+            warehouseReceipt: receipt._id, // ID phiếu nhập kho
+            quantityDynamic: item.quantityDynamic || 0, // Số lượng động
+            id: product.id, // Mã sản phẩm
+            sumQuantity: product.sumQuantity, // Tổng số lượng
+          };
+        })
+    );
+
+    // Kiểm tra xem sản phẩm có trong các phiếu nhập kho không
+    if (products.length > 0) {
+      return res.status(200).json({
+        success: true,
+        products: products,
+      });
+    } else {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy sản phẩm nào theo mã sản phẩm hoặc tên sản phẩm.",
+      });
+    }
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Đã xảy ra lỗi trong quá trình xử lý.",
+    });
+  }
+});
+
+
 
 module.exports = {
   createWarehouseReceipt,
@@ -822,5 +1015,7 @@ module.exports = {
   filterByIdPNK,
   filterReceiptByDate,
   getFilteredWarehouseReceipts,
-  sumTotalAmountReceipt
+  sumTotalAmountReceipt,
+  searchProductById,
+  searchProductByName
 };

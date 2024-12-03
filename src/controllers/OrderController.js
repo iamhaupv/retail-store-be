@@ -484,12 +484,84 @@ if (existingProduct) {
 });
 
 // Hàm tính tổng tiền và tổng VAT theo ngày tháng năm
-const getTotalAmountAndVAT = async (date) => {
+// const getTotalAmountAndVAT = async (req, res) => {
+//   try {
+//     // Lấy ngày từ body của request
+//     const { date } = req.body;  // Assuming the date is passed in the body of the request
+
+//     if (!date) {
+//       return res.status(400).json({ message: 'Date is required' });
+//     }
+
+//     // Cấu trúc ngày bắt đầu và ngày kết thúc của ngày được truyền vào
+//     const startDate = new Date(date);
+//     startDate.setHours(0, 0, 0, 0);  // Đặt thời gian về 00:00:00 (bắt đầu ngày)
+
+//     const endDate = new Date(date);
+//     endDate.setHours(23, 59, 59, 999);  // Đặt thời gian về 23:59:59 (kết thúc ngày)
+
+//     // Truy vấn MongoDB và sử dụng aggregate
+//     const result = await Order.aggregate([
+//       {
+//         $match: {
+//           createdAt: {
+//             $gte: startDate,  // Lọc đơn hàng lớn hơn hoặc bằng ngày bắt đầu
+//             $lt: endDate,     // Lọc đơn hàng nhỏ hơn ngày kết thúc
+//           },
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: null,  // Không nhóm theo trường nào cụ thể, tính tổng
+//           totalAmount: { $sum: "$totalAmount" },  // Tổng tiền
+//           totalVAT: { $sum: "$amountVAT" },  // Tổng VAT
+//         },
+//       },
+//     ]);
+
+//     // Kiểm tra và trả về kết quả
+//     if (result.length > 0) {
+//       return res.status(200).json({
+//         sum: {
+//           totalAmount: result[0].totalAmount,
+//         totalVAT: result[0].totalVAT,
+//         }
+//       });
+//     } else {
+//       return res.status(200).json({
+//         sum: {
+//           totalAmount: 0,
+//         totalVAT: 0,
+//         }
+//       });
+//     }
+//   } catch (error) {
+//     console.error('Error calculating total amount and VAT:', error);
+//     return res.status(500).json({
+//       message: 'Error calculating totals',
+//       error: error.message,
+//     });
+//   }
+// };
+const getTotalAmountAndVAT = async (req, res) => {
   try {
-    // Cấu trúc ngày bắt đầu và ngày kết thúc của tháng/năm
-    const startDate = new Date(date); // Đây là ngày bạn muốn tính toán (ví dụ: '2024-11-27')
-    const endDate = new Date(date);
-    endDate.setDate(endDate.getDate() + 1); // Tăng 1 ngày để lấy phạm vi đến hết ngày đó
+    // Lấy ngày từ body của request
+    const { date } = req.body;  // Assuming the date is passed in the body of the request
+
+    if (!date) {
+      return res.status(400).json({ message: 'Date is required' });
+    }
+
+    // Cấu trúc ngày bắt đầu và ngày kết thúc của tháng/năm từ ngày đã cho
+    const givenDate = new Date(date);
+
+    // Lấy ngày bắt đầu của tháng
+    const startDate = new Date(givenDate.getFullYear(), givenDate.getMonth(), 1); // Ngày 1 của tháng
+    startDate.setHours(0, 0, 0, 0);  // Đặt giờ về 00:00:00 (bắt đầu ngày)
+
+    // Lấy ngày cuối của tháng
+    const endDate = new Date(givenDate.getFullYear(), givenDate.getMonth() + 1, 0); // Ngày cuối của tháng
+    endDate.setHours(23, 59, 59, 999);  // Đặt giờ về 23:59:59 (kết thúc ngày)
 
     // Truy vấn MongoDB và sử dụng aggregate
     const result = await Order.aggregate([
@@ -510,23 +582,31 @@ const getTotalAmountAndVAT = async (date) => {
       },
     ]);
 
-    // Kiểm tra kết quả
+    // Kiểm tra và trả về kết quả
     if (result.length > 0) {
-      return {
-        totalAmount: result[0].totalAmount,  // Tổng tiền
-        totalVAT: result[0].totalVAT,        // Tổng VAT
-      };
+      return res.status(200).json({
+        sum: {
+          totalAmount: result[0].totalAmount,
+          totalVAT: result[0].totalVAT,
+        },
+      });
     } else {
-      return {
-        totalAmount: 0,
-        totalVAT: 0,
-      };
+      return res.status(200).json({
+        sum: {
+          totalAmount: 0,
+          totalVAT: 0,
+        },
+      });
     }
   } catch (error) {
     console.error('Error calculating total amount and VAT:', error);
-    throw new Error('Error calculating totals');
+    return res.status(500).json({
+      message: 'Error calculating totals',
+      error: error.message,
+    });
   }
 };
+
 
 // Example usage
 const date = '2024-11-30'; // Ngày bạn muốn tính tổng
@@ -549,4 +629,5 @@ module.exports = {
   filterOrderByDate,
   filterOrders,
   sumTotalAmount,
+  getTotalAmountAndVAT
 };
