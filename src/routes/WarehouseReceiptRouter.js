@@ -10,13 +10,17 @@ router.post("/search-product-name", [verifyAccessToken], WarehouseReceiptControl
 router.post("/filter-product-by-category-name-in-recepit", [verifyAccessToken, isAdmin], WarehouseReceiptController.filterProductByCategoryNameInReceipt)
 // get all warehouse receipt 
 router.get("/", [verifyAccessToken, isAdmin], WarehouseReceiptController.getAllWarehouseReceipt)
+router.post("/search-product", [verifyAccessToken, isAdmin], WarehouseReceiptController.searchProducts)
 // 
+router.post("/change-display-product", [verifyAccessToken, isAdmin], WarehouseReceiptController.changeIsDisplayProduct)
 router.post("/filter-receipt-by-date", [verifyAccessToken, isAdmin], WarehouseReceiptController.filterReceiptByDate)
 // 
 router.get("/sum", [verifyAccessToken, isAdmin], WarehouseReceiptController.sumTotalAmountReceipt)
+router.post("/week", [verifyAccessToken, isAdmin], WarehouseReceiptController.getAllWarehouseReceiptWeek)
 //
 router.post("/filter-by-condition", [verifyAccessToken, isAdmin], WarehouseReceiptController.getFilteredWarehouseReceipts)
 router.post("/filter-id-PNK", [verifyAccessToken, isAdmin], WarehouseReceiptController.filterByIdPNK)
+router.post("/expires", [verifyAccessToken, isAdmin], WarehouseReceiptController.searchProductExpires)
 router.post("/:id", [verifyAccessToken, isAdmin], WarehouseReceiptController.changeIsDisplay)
 // last id receipt
 router.get("/last-id", [verifyAccessToken, isAdmin], WarehouseReceiptController.lastIdReceipt)

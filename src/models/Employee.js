@@ -37,7 +37,8 @@ var employeeSchema = new mongoose.Schema(
     address: { type: String, require: true, trim: true },
     phone: { type: String, require: true, trim: true },
     description: { type: String, trim: true },
-    user: { type: mongoose.Types.ObjectId, ref: "User" }
+    user: { type: mongoose.Types.ObjectId, ref: "User" },
+    shifts: [{ type: mongoose.Types.ObjectId, ref: "Employee" },]
   },
   {
     timestamps: true,

@@ -19,6 +19,20 @@ var orderSchema = new mongoose.Schema(
         },
         quantity: { type: Number, default: 0 },
         unit: { type: mongoose.Types.ObjectId, ref: "Unit", required: true },
+        price: { type: Number, required: true }, 
+        discountAmount: { type: Number, default: 0 },
+        totalPrice: { type: Number, required: true },
+        VAT: {type: Number},
+        warehouseDetails: [
+          {
+            warehouseReceipt: {
+              type: mongoose.Types.ObjectId,
+              ref: "WarehouseReceipt",
+              required: true,
+            },
+            quantity: { type: Number, default: 0 },
+          },
+        ],
       },
     ],
     totalAmount: {
@@ -31,13 +45,16 @@ var orderSchema = new mongoose.Schema(
       type: Number,
     },
     amountVAT: {
-      type: Number
+      type: Number,
     },
     id: {
       type: Number,
       unique: true,
-      require: true
-    }
+      require: true,
+    },
+    sumImportPrice: {
+      type: Number,
+    },
   },
   {
     timestamps: true,

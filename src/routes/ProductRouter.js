@@ -32,6 +32,7 @@ router.patch("/update-price", [verifyAccessToken, isAdmin], ProductController.up
 //
 router.get("/product-sumquantity", [verifyAccessToken], ProductController.filterProductSumQuantity)
 router.get("/last-id-number", [verifyAccessToken, isAdmin], ProductController.lastIdNumber)
+router.post("/add-discount", [verifyAccessToken, isAdmin], ProductController.addDiscount)
 //
 router.post("/filter-id", [verifyAccessToken], ProductController.filterProductById)
 //

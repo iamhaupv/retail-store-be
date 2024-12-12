@@ -1,77 +1,8 @@
 const expressAsyncHandler = require("express-async-handler");
-const { WarehouseReceipt, Product, Unit, Category, Brand } = require("../models/index");
-
+const { WarehouseReceipt, Product, Unit } = require("../models/index");
+const moment = require('moment');  
+const mongoose = require('mongoose');
 // create warehouse receipt
-// const createWarehouseReceipt = expressAsyncHandler(async (req, res) => {
-//   // Kiểm tra dữ liệu đầu vào
-//   if (!req.body || Object.keys(req.body).length === 0) {
-//     return res.status(400).json({ success: false, message: "Missing input!" });
-//   }
-
-//   const { user, description, idPNK, products, expires } = req.body;
-
-//   // Tạo phiếu lập kho mới
-//   const newWarehouseReceipt = await WarehouseReceipt.create({
-//     user,
-//     description,
-//     idPNK,
-//     products: [], // Khởi tạo danh sách sản phẩm
-//     expires,
-//   });
-
-//   // Xử lý từng sản phẩm trong danh sách
-//   for (const item of products) {
-//     const { product, quantity, importPrice, unit, expires } = item; // Bao gồm cả unit và importPrice
-
-//     // Kiểm tra từng trường trong sản phẩm
-//     if (!product || quantity == null || !unit || importPrice == null) {
-//       return res.status(400).json({ success: false, message: "Missing product fields!" });
-//     }
-
-//     // Lấy thông tin đơn vị tương ứng
-//     const unitInfo = await Unit.findById(unit);
-//     if (!unitInfo) {
-//       return res.status(404).json({ success: false, message: `Unit with ID ${unit} not found.` });
-//     }
-
-//     // Quy đổi số lượng theo hệ số quy đổi
-//     const convertedQuantity = quantity * unitInfo.convertQuantity;
-
-//     // Cập nhật số lượng cho sản phẩm tương ứng
-//     const updatedProduct = await Product.findOneAndUpdate(
-//       { _id: product },
-//       {
-//         $inc: { quantity: convertedQuantity }, // Cập nhật số lượng đã quy đổi
-//         $set: { status: "in_stock" }, // Đặt trạng thái
-//         $push: { warehouseReceipt: newWarehouseReceipt._id }, // Thêm phiếu vào danh sách phiếu
-//       },
-//       { new: true }
-//     );
-
-//     if (!updatedProduct) {
-//       return res.status(404).json({ success: false, message: `Product with ID ${product} not found.` });
-//     }
-
-//     // Thêm sản phẩm vào danh sách sản phẩm của phiếu nhập kho
-//     newWarehouseReceipt.products.push({
-//       product: updatedProduct._id, // ID sản phẩm
-//       quantity: quantity, // Số lượng đã quy đổi
-//       importPrice: importPrice, // Giá nhập
-//       expires: expires, // Hạn sử dụng
-//       unit: unit, // Đơn vị
-//       quantityDynamic: convertedQuantity
-//     });
-//   }
-
-//   // Lưu lại phiếu nhập kho với danh sách sản phẩm đã cập nhật
-//   await newWarehouseReceipt.save();
-
-//   return res.status(201).json({
-//     success: true,
-//     newWarehouseReceipt,
-//   });
-// });
-
 const createWarehouseReceipt = expressAsyncHandler(async (req, res) => {
   // Kiểm tra dữ liệu đầu vào
   if (!req.body || Object.keys(req.body).length === 0) {
@@ -152,11 +83,6 @@ const createWarehouseReceipt = expressAsyncHandler(async (req, res) => {
     newWarehouseReceipt,
   });
 });
-
-//
-
-
-
 // last id receipt
 const lastIdReceipt = expressAsyncHandler(async (req, res) => {
   try {
@@ -269,7 +195,7 @@ const filterByIdPNK = expressAsyncHandler(async (req, res) => {
       select: "brand title",
       populate: {
         path: "brand", 
-        select: "name address phone"
+        select: "name address supplyName phone"
       }
     }).populate({
       path: "products.unit",
@@ -327,7 +253,7 @@ const filterReceiptByDate = expressAsyncHandler(async (req, res) => {
       select: "title brand",
       populate: {
         path: "brand",
-        select: "name address phone"
+        select: "name address supplyName phone"
       }
     }).populate({
       path: "products.unit",
@@ -346,132 +272,6 @@ const filterReceiptByDate = expressAsyncHandler(async (req, res) => {
   }
 });
 
-
-// const getFilteredWarehouseReceipts = expressAsyncHandler(async (req, res) => {
-//   const { title, idPNK, category, brand } = req.body;
-
-//   try {
-  
-//     const receipts = await WarehouseReceipt.find({ isDisplay: true })
-//       .populate({
-//         path: "products.product",
-//         select: "title expires brand importPrice idPNK id images quantity category",  // Đảm bảo có idPNK và category
-//         populate: [
-//           {
-//             path: "brand",  // Populating brand field
-//             select: "name",  // Chỉ lấy tên thương hiệu
-//           },
-//           {
-//             path: "category",  // Populating category field
-//             select: "name",  // Chỉ lấy tên danh mục
-//           }
-//         ],
-//       })
-//       .populate("user")
-//       .populate("products.unit")
-//       .sort({ createdAt: -1 })
-//       .exec();
-
-//     // Lọc các biên nhận kho dựa trên điều kiện được cung cấp
-//     const filteredReceipts = receipts.filter(receipt => {
-//       let match = true;
-
-//       // Lọc theo title (trên tên sản phẩm)
-//       if (title && title.trim() !== "") {
-//         match = match && receipt.products.some(item =>
-//           item.product.title.trim().toLowerCase() === title.trim().toLowerCase()  // So khớp chính xác
-//         );
-//       }
-
-//       // Lọc theo idPNK (trên idPNK của biên nhận, không phải của sản phẩm)
-//       if (idPNK && idPNK !== "") {
-//         // Kiểm tra sản phẩm trong biên nhận kho có idPNK trùng khớp
-//         match = match && receipt.products.some(item => 
-//           item.product.idPNK === idPNK
-//         );
-//       }
-
-//       // Lọc theo category (trên danh mục sản phẩm)
-//       if (category && category.trim() !== "") {
-//         match = match && receipt.products.some(item => {
-//           const categoryName = item.product.category && item.product.category.name ? item.product.category.name.trim().toLowerCase() : "";
-//           return categoryName === category.trim().toLowerCase();  // So sánh chính xác category
-//         });
-//       }
-
-//       // Lọc theo brand (trên tên thương hiệu của sản phẩm)
-//       if (brand && brand.trim() !== "") {
-//         match = match && receipt.products.some(item =>
-//           item.product.brand &&
-//           item.product.brand.name.toLowerCase().trim() === brand.toLowerCase().trim()  // So sánh chính xác brand
-//         );
-//       }
-
-//       return match;
-//     });
-
-//     // Nếu không tìm thấy biên nhận nào khớp với điều kiện, trả về danh sách rỗng
-//     if (filteredReceipts.length === 0) {
-//       return res.status(200).json({
-//         success: true,
-//         receipts: [],
-//         message: "No warehouse receipts found matching the provided conditions.",
-//       });
-//     }
-
-//     // Xử lý và tính giá trị tổng của các biên nhận kho đã lọc
-//     const receiptsWithDetails = await Promise.all(
-//       filteredReceipts.map(async (receipt) => {
-//         const productsWithDetails = await Promise.all(
-//           receipt.products.map(async (item) => {
-//             const { product, quantity, importPrice, unit, quantityDynamic } = item;
-//             const unitInfo = unit ? await Unit.findById(unit) : null;
-
-//             const convertedQuantity = unitInfo
-//               ? unitInfo.convertQuantity * quantity  // Chuyển đổi số lượng theo đơn vị
-//               : quantity;
-
-//             const totalValue = importPrice * convertedQuantity;
-
-//             return {
-//               quantityDynamic,
-//               product,
-//               quantity,
-//               importPrice,
-//               totalValue,
-//               unit,
-//               expires: item.expires,
-//             };
-//           })
-//         );
-
-//         const totalReceiptValue = productsWithDetails.reduce(
-//           (total, product) => total + product.totalValue,
-//           0
-//         );
-
-//         return {
-//           ...receipt._doc,
-//           products: productsWithDetails,
-//           totalValue: totalReceiptValue,
-//         };
-//       })
-//     );
-
-//     return res.status(200).json({
-//       success: receiptsWithDetails.length > 0,
-//       receipts: receiptsWithDetails.length > 0 ? receiptsWithDetails : "No warehouse receipts found!",
-//     });
-
-//   } catch (error) {
-//     return res.status(500).json({
-//       success: false,
-//       message: error.message || "Internal Server Error",
-//     });
-//   }
-// });
-
-
 const getAllWarehouseReceipt = expressAsyncHandler(async (req, res) => {
   try {
     const receipts = await WarehouseReceipt.find({ isDisplay: true })
@@ -480,7 +280,7 @@ const getAllWarehouseReceipt = expressAsyncHandler(async (req, res) => {
         select: "title expires brand  importPrice",
         populate: {
           path: "brand",
-          select: "name phone address",
+          select: "name supplyName phone address",
         },
       })
       .populate({
@@ -488,7 +288,7 @@ const getAllWarehouseReceipt = expressAsyncHandler(async (req, res) => {
         select: "employee", 
         populate: {
           path: "employee",
-          select: "name"
+          select: "name phone"
         }
       })
       .populate({
@@ -592,139 +392,6 @@ const sumTotalAmountReceipt = expressAsyncHandler(async (req, res) => {
   }
 });
 
-// const getFilteredWarehouseReceipts = expressAsyncHandler(async (req, res) => {
-//   const { category, brand, idPNK } = req.body;
-
-//   try {
-//     // Log the incoming request body for idPNK
-//     console.log("Received idPNK:", idPNK);
-
-//     // Find warehouse receipts that are marked as displayed
-//     const receipts = await WarehouseReceipt.find({ isDisplay: true })
-//       .populate({
-//         path: "products.product",
-//         select: "title expires brand importPrice idPNK id images quantity category",  
-//         populate: [
-//           {
-//             path: "brand",  
-//             select: "name",  
-//           },
-//           {
-//             path: "category", 
-//             select: "name",  
-//           }
-//         ],
-//       })
-//       .populate({
-//         path: "user",
-//         select: "_id name"
-//       })
-//       .populate("products.unit")
-//       .sort({ createdAt: -1 })
-//       .exec();
-
-//     // Convert idPNK to a number if it exists in the request
-//     const idPNKNumber = idPNK ? Number(idPNK) : null; // Convert to number, or null if not provided
-
-//     // Log the parsed idPNKNumber
-//     console.log("Parsed idPNK as number:", idPNKNumber);
-
-//     // Filter receipts based on category, brand, and idPNK
-//     const filteredReceipts = receipts.filter(receipt => {
-//       let match = true;
-
-//       // Log the current receipt's idPNK for comparison
-//       console.log("Checking receipt idPNK:", receipt.idPNK);
-
-//       // Filter by category if provided
-//       if (category && category.trim() !== "") {
-//         match = match && receipt.products.some(item => {
-//           const categoryName = item.product.category && item.product.category.name ? item.product.category.name.trim().toLowerCase() : "";
-//           return categoryName === category.trim().toLowerCase(); 
-//         });
-//       }
-
-//       // Filter by brand if provided
-//       if (brand && brand.trim() !== "") {
-//         match = match && receipt.products.some(item =>
-//           item.product.brand &&
-//           item.product.brand.name.toLowerCase().trim() === brand.toLowerCase().trim()  
-//         );
-//       }
-
-//       // Filter by idPNK if provided and is a valid number
-//       if (idPNKNumber && !isNaN(idPNKNumber)) {  // Check if idPNKNumber is a valid number
-//         match = match && receipt.idPNK && receipt.idPNK == idPNKNumber; // Compare as number
-//         console.log(`Matching idPNK: ${receipt.idPNK} with ${idPNKNumber}`);
-//       }
-
-//       return match;
-//     });
-
-//     // If no receipts match the filters
-//     if (filteredReceipts.length === 0) {
-//       return res.status(200).json({
-//         success: true,
-//         receipts: [],
-//         message: "No warehouse receipts found matching the provided conditions.",
-//       });
-//     }
-
-//     // Map over the filtered receipts to retrieve the product details
-//     const receiptsWithDetails = await Promise.all(
-//       filteredReceipts.map(async (receipt) => {
-//         // For each product, retrieve detailed information
-//         const productsWithDetails = await Promise.all(
-//           receipt.products.map(async (item) => {
-//             const { product, quantity, importPrice, unit, quantityDynamic } = item;
-//             const unitInfo = unit ? await Unit.findById(unit) : null;
-
-//             const convertedQuantity = unitInfo
-//               ? unitInfo.convertQuantity * quantity
-//               : quantity;
-
-//             const totalValue = importPrice * convertedQuantity;
-//             return {
-//               quantityDynamic,
-//               product,
-//               quantity,
-//               importPrice,
-//               totalValue,
-//               unit,
-//               expires: item.expires,
-//             };
-//           })
-//         );
-
-//         // Calculate the total value of the receipt
-//         const totalReceiptValue = productsWithDetails.reduce(
-//           (total, product) => total + product.totalValue,
-//           0
-//         );
-
-//         return {
-//           ...receipt._doc,
-//           products: productsWithDetails,
-//           totalValue: totalReceiptValue,
-//         };
-//       })
-//     );
-
-//     // Return the filtered and populated receipts
-//     return res.status(200).json({
-//       success: receiptsWithDetails.length > 0,
-//       receipts: receiptsWithDetails.length > 0 ? receiptsWithDetails : "No warehouse receipts found!",
-//     });
-
-//   } catch (error) {
-//     // Handle any errors
-//     return res.status(500).json({
-//       success: false,
-//       message: error.message || "Internal Server Error",
-//     });
-//   }
-// });
-
 const getFilteredWarehouseReceipts = expressAsyncHandler(async (req, res) => {
   const { category, brand, idPNK } = req.body;
 
@@ -733,19 +400,26 @@ const getFilteredWarehouseReceipts = expressAsyncHandler(async (req, res) => {
     const receipts = await WarehouseReceipt.find({ isDisplay: true })
       .populate({
         path: "products.product",
-        select: "title expires brand importPrice idPNK id images quantity category",  
+        select: "title expires brand importPrice idPNK id discount images quantity category",
         populate: [
           {
-            path: "brand",  
-            select: "name",  
+            path: "brand",
+            select: "name",
           },
           {
-            path: "category", 
-            select: "name",  
-          }
+            path: "unit",
+            select: "name",
+          },
+          {
+            path: "category",
+            select: "name",
+          },
         ],
       })
-      .populate("user")
+      .populate({
+        path: "user",
+        select: "_id",
+      })
       .populate("products.unit")
       .sort({ createdAt: -1 })
       .exec();
@@ -754,28 +428,38 @@ const getFilteredWarehouseReceipts = expressAsyncHandler(async (req, res) => {
     const idPNKNumber = idPNK ? Number(idPNK) : null;
 
     // Lọc phiếu nhập kho dựa trên các điều kiện category, brand và idPNK
-    const filteredReceipts = receipts.filter(receipt => {
+    const filteredReceipts = receipts.filter((receipt) => {
       let match = true;
 
       // Lọc theo danh mục nếu có
       if (category && category.trim() !== "") {
-        match = match && receipt.products.some(item => {
-          const categoryName = item.product.category && item.product.category.name ? item.product.category.name.trim().toLowerCase() : "";
-          return categoryName === category.trim().toLowerCase(); // So sánh không phân biệt chữ hoa chữ thường và bỏ khoảng trắng thừa
-        });
+        match =
+          match &&
+          receipt.products.some((item) => {
+            const categoryName =
+              item.product.category && item.product.category.name
+                ? item.product.category.name.trim().toLowerCase()
+                : "";
+            return categoryName === category.trim().toLowerCase();
+          });
       }
 
       // Lọc theo thương hiệu nếu có
       if (brand && brand.trim() !== "") {
-        match = match && receipt.products.some(item =>
-          item.product.brand &&
-          item.product.brand.name.toLowerCase().trim() === brand.toLowerCase().trim()  
-        );
+        match =
+          match &&
+          receipt.products.some(
+            (item) =>
+              item.product.brand &&
+              item.product.brand.name.toLowerCase().trim() ===
+                brand.toLowerCase().trim()
+          );
       }
 
       // Lọc theo idPNK nếu có và idPNK hợp lệ
       if (idPNKNumber && !isNaN(idPNKNumber)) {
-        match = match && receipt.idPNK && receipt.idPNK == idPNKNumber; // So sánh với số
+        match =
+          match && receipt.idPNK && receipt.idPNK == idPNKNumber;
       }
 
       return match;
@@ -794,25 +478,28 @@ const getFilteredWarehouseReceipts = expressAsyncHandler(async (req, res) => {
     const receiptsWithDetails = await Promise.all(
       filteredReceipts.map(async (receipt) => {
         const productsWithDetails = await Promise.all(
-          receipt.products.map(async (item) => {
-            const { product, quantity, importPrice, unit, quantityDynamic } = item;
-            const unitInfo = unit ? await Unit.findById(unit) : null;
+          receipt.products
+            .filter((item) => item.isDisplay) // Chỉ lấy sản phẩm có isDisplay: true
+            .map(async (item) => {
+              const { product, quantity, importPrice, unit, quantityDynamic } =
+                item;
+              const unitInfo = unit ? await Unit.findById(unit) : null;
 
-            const convertedQuantity = unitInfo
-              ? unitInfo.convertQuantity * quantity
-              : quantity;
+              const convertedQuantity = unitInfo
+                ? unitInfo.convertQuantity * quantity
+                : quantity;
 
-            const totalValue = importPrice * convertedQuantity;
-            return {
-              quantityDynamic,
-              product,
-              quantity,
-              importPrice,
-              totalValue,
-              unit,
-              expires: item.expires,
-            };
-          })
+              const totalValue = importPrice * convertedQuantity;
+              return {
+                quantityDynamic,
+                product,
+                quantity,
+                importPrice,
+                totalValue,
+                unit,
+                expires: item.expires,
+              };
+            })
         );
 
         // Tính tổng giá trị của phiếu nhập kho
@@ -831,9 +518,11 @@ const getFilteredWarehouseReceipts = expressAsyncHandler(async (req, res) => {
 
     return res.status(200).json({
       success: receiptsWithDetails.length > 0,
-      receipts: receiptsWithDetails.length > 0 ? receiptsWithDetails : "Không có phiếu nhập kho nào!",
+      receipts:
+        receiptsWithDetails.length > 0
+          ? receiptsWithDetails
+          : "Không có phiếu nhập kho nào!",
     });
-
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -841,7 +530,6 @@ const getFilteredWarehouseReceipts = expressAsyncHandler(async (req, res) => {
     });
   }
 });
-
 
 const searchProductById = expressAsyncHandler(async (req, res) => {
   try {
@@ -936,6 +624,7 @@ const searchProductByName = expressAsyncHandler(async (req, res) => {
         populate: [
           { path: "brand", select: "name" },
           { path: "category", select: "name" },
+          { path: "unit", select: "name" },
         ],
       })
       .populate({
@@ -949,11 +638,13 @@ const searchProductByName = expressAsyncHandler(async (req, res) => {
     const products = receipts.flatMap((receipt) =>
       receipt.products
         .filter((item) => {
+          if (!item.isDisplay) return false;
           // Lọc sản phẩm theo mã sản phẩm (productId) hoặc tên sản phẩm (title)
           if (productId) {
             return item.product?.id == productId; // Kiểm tra theo mã sản phẩm
           } else if (title) {
-            return item.product?.title.toLowerCase() == title.toLowerCase(); // Kiểm tra theo tên sản phẩm (case-insensitive)
+            // return item.product?.title.toLowerCase() == title.toLowerCase(); // Kiểm tra theo tên sản phẩm (case-insensitive)
+            return item.product?.title.toLowerCase().includes(title.toLowerCase());
           }
         })
         .map((item) => {
@@ -980,6 +671,9 @@ const searchProductByName = expressAsyncHandler(async (req, res) => {
             quantityDynamic: item.quantityDynamic || 0, // Số lượng động
             id: product.id, // Mã sản phẩm
             sumQuantity: product.sumQuantity, // Tổng số lượng
+            unit: product.unit.name,
+            discount: product.discount || 0,
+            _id: product._id
           };
         })
     );
@@ -1004,8 +698,462 @@ const searchProductByName = expressAsyncHandler(async (req, res) => {
   }
 });
 
+// const searchProductExpires = expressAsyncHandler(async (req, res) => {
+//   const { expirationStatus } = req.body;  // Nhận trạng thái hết hạn từ request body
+//   const currentDate = moment();  // Ngày hiện tại
+//   const fiveDaysFromNow = moment().add(5, 'days');  // 5 ngày sau
+//   if(!expirationStatus || expirationStatus === "") return res.status(201).json({
+//     products: []
+//   })
+//   let expirationCondition = {};
 
+//   // Xử lý theo trạng thái hết hạn
+//   if (expirationStatus === "Còn hạn") {
+//     expirationCondition = {
+//       "products.expires": { $gte: currentDate.toDate() },  // Ngày hết hạn sau ngày hiện tại
+//     };
+//   } else if (expirationStatus === "Hết hạn") {
+//     expirationCondition = {
+//       "products.expires": { $lt: currentDate.toDate() },  // Ngày hết hạn trước ngày hiện tại
+//     };
+//   } else if (expirationStatus === "Gần hết hạn") {
+//     expirationCondition = {
+//       "products.expires": {
+//         $gte: currentDate.toDate(),  // Ngày hết hạn sau ngày hiện tại
+//         $lte: fiveDaysFromNow.toDate(),  // Ngày hết hạn trong vòng 5 ngày từ hôm nay
+//       },
+//     };
+//   }
 
+//   // Lấy tất cả các phiếu nhập kho và populate thông tin sản phẩm và các trường khác của phiếu
+//   const receipts = await WarehouseReceipt.find(expirationCondition)
+//     .populate({
+//       path: "products.product",
+//       select: "title expires id images discount price",  // Chọn các trường cần thiết cho sản phẩm
+//       populate: [
+//         { path: "brand", select: "name" },  // Tên thương hiệu
+//         { path: "category", select: "name" },  
+//         { path: "unit", select: "name" },
+//       ],
+//     })
+//     .populate({
+//       path: "products.unit",
+//       select: "convertQuantity",  // Thông tin đơn vị
+//     })
+//     .sort({ createdAt: -1 })
+//     .exec();
+
+//   // Mảng để lưu trữ các sản phẩm thỏa mãn yêu cầu
+//   let products = [];
+
+//   // Duyệt qua tất cả các phiếu nhập kho và lọc sản phẩm
+//   receipts.forEach(receipt => {
+//     receipt.products.forEach(item => {
+//       const productExpires = moment(item.expires);  // Ngày hết hạn của sản phẩm
+
+//       if (
+//         (expirationStatus === "Còn hạn" && productExpires.isAfter(currentDate)) ||
+//         (expirationStatus === "Hết hạn" && productExpires.isBefore(currentDate)) ||
+//         (expirationStatus === "Gần hết hạn" && productExpires.isBetween(currentDate, fiveDaysFromNow, null, '[)'))
+//       ) {
+//         const product = {
+//           unit: item.product.unit.name,  
+//           expires: item.expires,  
+//           idPNK: receipt.idPNK,  
+//           images: item.product.images, 
+//           title: item.product.title, 
+//           category: item.product.category.name,  
+//           brand: item.product.brand.name,  
+//           quantity: item.quantity,  
+//           price: item.product.price,  
+//           importPrice: item.importPrice,  
+//           _id: item.product._id,  
+//           warehouseReceipt: receipt._id,  
+//           quantityDynamic: item.quantityDynamic,  
+//           id: item.product.id,  
+//           discount: item.product.discount
+//         };
+
+//         products.push(product);
+//       }
+//     });
+//   });
+
+//   // Đếm số lượng sản phẩm
+//   console.log(`Total products found: ${products.length}`);
+
+//   // Trả về thông tin của phiếu nhập kho và các sản phẩm
+//   return res.status(200).json({
+//     success: products.length > 0,  // Nếu có sản phẩm, success = true
+//     totalProducts: products.length,  // Trả về tổng số sản phẩm thỏa mãn
+//     products: products,  // Trả về các sản phẩm đã lọc
+//     totalReceipts: receipts.length,  // Tổng số phiếu nhập kho
+//   });
+// });
+const searchProductExpires = expressAsyncHandler(async (req, res) => {
+  const { expirationStatus } = req.body; // Nhận trạng thái hết hạn từ request body
+  const currentDate = moment(); // Ngày hiện tại
+  const fiveDaysFromNow = moment().add(5, 'days'); // 5 ngày sau
+
+  if (!expirationStatus || expirationStatus === "") {
+    return res.status(201).json({
+      products: [],
+    });
+  }
+
+  let expirationCondition = {};
+
+  // Xử lý theo trạng thái hết hạn
+  if (expirationStatus === "Còn hạn") {
+    expirationCondition = {
+      "products.expires": { $gte: currentDate.toDate() }, // Ngày hết hạn sau ngày hiện tại
+    };
+  } else if (expirationStatus === "Hết hạn") {
+    expirationCondition = {
+      "products.expires": { $lt: currentDate.toDate() }, // Ngày hết hạn trước ngày hiện tại
+    };
+  } else if (expirationStatus === "Gần hết hạn") {
+    expirationCondition = {
+      "products.expires": {
+        $gte: currentDate.toDate(), // Ngày hết hạn sau ngày hiện tại
+        $lte: fiveDaysFromNow.toDate(), // Ngày hết hạn trong vòng 5 ngày từ hôm nay
+      },
+    };
+  }
+
+  // Lấy tất cả các phiếu nhập kho có isDisplay: true và populate thông tin sản phẩm
+  const receipts = await WarehouseReceipt.find({
+    ...expirationCondition,
+    isDisplay: true, // Thêm điều kiện isDisplay: true
+  })
+    .populate({
+      path: "products.product",
+      select: "title expires id images discount price", // Chọn các trường cần thiết cho sản phẩm
+      populate: [
+        { path: "brand", select: "name" }, // Tên thương hiệu
+        { path: "category", select: "name" },
+        { path: "unit", select: "name" },
+      ],
+    })
+    .populate({
+      path: "products.unit",
+      select: "convertQuantity", // Thông tin đơn vị
+    })
+    .sort({ createdAt: -1 })
+    .exec();
+
+  // Mảng để lưu trữ các sản phẩm thỏa mãn yêu cầu
+  let products = [];
+
+  // Duyệt qua tất cả các phiếu nhập kho và lọc sản phẩm
+  receipts.forEach((receipt) => {
+    receipt.products.forEach((item) => {
+      if (!item.isDisplay) return; // Bỏ qua sản phẩm không có isDisplay: true
+
+      const productExpires = moment(item.expires); // Ngày hết hạn của sản phẩm
+
+      if (
+        (expirationStatus === "Còn hạn" && productExpires.isAfter(currentDate)) ||
+        (expirationStatus === "Hết hạn" && productExpires.isBefore(currentDate)) ||
+        (expirationStatus === "Gần hết hạn" && productExpires.isBetween(currentDate, fiveDaysFromNow, null, "[)"))
+      ) {
+        const product = {
+          unit: item.product.unit.name,
+          expires: item.expires,
+          idPNK: receipt.idPNK,
+          images: item.product.images,
+          title: item.product.title,
+          category: item.product.category.name,
+          brand: item.product.brand.name,
+          quantity: item.quantity,
+          price: item.product.price,
+          importPrice: item.importPrice,
+          _id: item.product._id,
+          warehouseReceipt: receipt._id,
+          quantityDynamic: item.quantityDynamic,
+          id: item.product.id,
+          discount: item.product.discount,
+        };
+
+        products.push(product);
+      }
+    });
+  });
+
+  // Đếm số lượng sản phẩm
+  console.log(`Total products found: ${products.length}`);
+
+  // Trả về thông tin của phiếu nhập kho và các sản phẩm
+  return res.status(200).json({
+    success: products.length > 0, // Nếu có sản phẩm, success = true
+    totalProducts: products.length, // Trả về tổng số sản phẩm thỏa mãn
+    products: products, // Trả về các sản phẩm đã lọc
+    totalReceipts: receipts.length, // Tổng số phiếu nhập kho
+  });
+});
+
+const getAllWarehouseReceiptWeek = expressAsyncHandler(async (req, res) => {
+  try {
+    // Lấy startDate và endDate từ req.body
+    const { startDate, endDate } = req.body;
+
+    // Kiểm tra nếu startDate hoặc endDate không được cung cấp
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: "Start date and end date are required.",
+      });
+    }
+
+    // Chuyển đổi startDate và endDate thành dạng UTC để tránh sai lệch múi giờ
+    const start = new Date(`${startDate}T00:00:00.000Z`);
+    const end = new Date(`${endDate}T23:59:59.999Z`);
+
+    // Kiểm tra nếu startDate hoặc endDate không hợp lệ
+    if (isNaN(start) || isNaN(end)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date format.",
+      });
+    }
+
+    // Truy vấn các hóa đơn trong khoảng thời gian
+    const receipts = await WarehouseReceipt.find({
+      isDisplay: true,
+      createdAt: {
+        $gte: start, // >= startDate
+        $lte: end,   // <= endDate
+      },
+    })
+      .populate({
+        path: "products.product",
+        select: "title expires brand importPrice",
+        populate: {
+          path: "brand",
+          select: "name supplyName phone address",
+        },
+      })
+      .populate({
+        path: "user",
+        select: "employee",
+        populate: {
+          path: "employee",
+          select: "name phone",
+        },
+      })
+      .populate({
+        path: "products.unit",
+        select: "name convertQuantity",
+      })
+      .sort({ createdAt: -1 });
+
+    // Xử lý chi tiết sản phẩm và tính tổng giá trị từng hóa đơn
+    const receiptsWithDetails = receipts.map((receipt) => {
+      const productsWithDetails = receipt.products.map((item) => {
+        const { product, quantity, importPrice, unit, quantityDynamic } = item;
+
+        // Tính tổng giá trị cho mỗi sản phẩm
+        const totalValue = importPrice * quantityDynamic;
+
+        return {
+          quantityDynamic,
+          product,
+          quantity,
+          importPrice,
+          totalValue,
+          unit,
+          expires: item.expires,
+        };
+      });
+
+      // Tính tổng giá trị của hóa đơn
+      const totalReceiptValue = productsWithDetails.reduce(
+        (total, product) => total + product.totalValue,
+        0
+      );
+
+      return {
+        ...receipt._doc,
+        products: productsWithDetails,
+        totalValue: totalReceiptValue,
+      };
+    });
+
+    // Trả về kết quả
+    return res.status(200).json({
+      success: receiptsWithDetails.length > 0,
+      receipts: receiptsWithDetails.length > 0
+        ? receiptsWithDetails
+        : "Cannot get warehouse receipts for the specified period!",
+    });
+  } catch (error) {
+    // Xử lý lỗi
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal Server Error",
+    });
+  }
+});
+
+const changeIsDisplayProduct = expressAsyncHandler(async (req, res) => {
+  const { receiptId, productId, isDisplay } = req.body;
+
+  // Kiểm tra nếu receiptId không phải ObjectId hợp lệ
+  if (!mongoose.Types.ObjectId.isValid(receiptId)) {
+    return res.status(400).json({
+      success: false,
+      message: "receiptId không hợp lệ. Phải là ObjectId 24 ký tự hex.",
+    });
+  }
+
+  try {
+    const receipt = await WarehouseReceipt.findById(receiptId);
+
+    if (!receipt) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy phiếu nhập kho với receiptId này.",
+      });
+    }
+
+    // Tiến hành tìm và cập nhật sản phẩm
+    const product = receipt.products.find(item => item.product.toString() === productId);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy sản phẩm trong phiếu nhập kho này.",
+      });
+    }
+
+    // Cập nhật trường isDisplay
+    product.isDisplay = isDisplay;
+
+    await receipt.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Cập nhật thành công.",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Đã xảy ra lỗi khi cập nhật.",
+    });
+  }
+});
+
+const searchProducts = expressAsyncHandler(async (req, res) => {
+  const { expirationStatus, productId, title, category, brand, idPNK } = req.body;
+  const currentDate = moment();
+  const fiveDaysFromNow = moment().add(5, 'days');
+
+  // Kiểm tra xem có cung cấp thông tin tìm kiếm nào không
+  if (!expirationStatus && !productId && !title && !category && !brand && !idPNK) throw new Error("Missing input!")
+
+  let expirationCondition = {};
+
+  // Xử lý điều kiện hết hạn (expirationStatus)
+  if (expirationStatus === "Còn hạn") {
+    expirationCondition = { "products.expires": { $gte: currentDate.toDate() } };
+  } else if (expirationStatus === "Hết hạn") {
+    expirationCondition = { "products.expires": { $lt: currentDate.toDate() } };
+  } else if (expirationStatus === "Gần hết hạn") {
+    expirationCondition = { "products.expires": { $gte: currentDate.toDate(), $lte: fiveDaysFromNow.toDate() } };
+  }
+
+  try {
+    // Tìm tất cả các phiếu nhập kho có isDisplay: true và các điều kiện về ngày hết hạn
+    const receipts = await WarehouseReceipt.find({ isDisplay: true, ...expirationCondition })
+      .populate({
+        path: "products.product",
+        populate: [
+          { path: "brand", select: "name" },
+          { path: "category", select: "name" },
+          { path: "unit", select: "name" },
+        ],
+      })
+      .populate({ path: "products.unit", select: "name convertQuantity" })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    // Lọc sản phẩm theo mã sản phẩm (productId), tên sản phẩm (title), danh mục (category), thương hiệu (brand), và mã phiếu (idPNK)
+    const products = receipts.flatMap((receipt) =>
+      receipt.products
+        .filter((item) => {
+          let match = true;
+
+          if (!item.isDisplay) return false; // Chỉ lấy sản phẩm có isDisplay: true
+
+          // Lọc theo productId
+          if (productId && item.product?.id !== productId) match = false;
+  
+          // Lọc theo title (tên sản phẩm)
+          const sanitizedTitle = title.trim().toLowerCase();
+
+          // if (title && !item.product?.title.toLowerCase().includes(title.toLowerCase())) match = false;
+          if (
+            title &&
+            !new RegExp(`\\b${sanitizedTitle}\\b`, "i").test(item.product?.title)
+          ) {
+            match = false;
+          }
+          
+
+          // Lọc theo category (danh mục sản phẩm)
+          if (category && item.product.category?.name.toLowerCase() !== category.toLowerCase()) match = false;
+
+          // Lọc theo brand (thương hiệu sản phẩm)
+          if (brand && item.product.brand?.name.toLowerCase() !== brand.toLowerCase()) match = false;
+
+          // Lọc theo idPNK (mã phiếu nhập kho)
+          if (idPNK && receipt.idPNK !== idPNK) match = false;
+
+          return match;
+        })
+        .map((item) => {
+          const convertQuantity = item.unit?.convertQuantity || 1;
+          const calculatedQuantity = item.quantityDynamic ? item.quantity * convertQuantity : 0;
+
+          const product = item.product || {};
+          return {
+            expires: item.expires,
+            idPNK: receipt.idPNK,
+            images: product.images || [],
+            title: product.title || "N/A",
+            category: product.category?.name || "N/A",
+            brand: product.brand?.name || "N/A",
+            quantity: calculatedQuantity,
+            price: product.price || 0,
+            importPrice: item.importPrice || 0,
+            warehouseReceipt: receipt._id,
+            quantityDynamic: item.quantityDynamic || 0,
+            id: product.id,
+            discount: product.discount || 0,
+            _id: product._id,
+            unit: product.unit.name
+          };
+        })
+    );
+
+    // Trả về sản phẩm nếu tìm thấy
+    if (products.length > 0) {
+      return res.status(200).json({
+        success: true,
+        products: products,
+      });
+    } else {
+      return res.status(200).json({
+        success: false,
+        products: [],
+      });
+    }
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Đã xảy ra lỗi trong quá trình xử lý.",
+    });
+  }
+});
 module.exports = {
   createWarehouseReceipt,
   getAllWarehouseReceipt,
@@ -1017,5 +1165,9 @@ module.exports = {
   getFilteredWarehouseReceipts,
   sumTotalAmountReceipt,
   searchProductById,
-  searchProductByName
+  searchProductByName,
+  searchProductExpires,
+  getAllWarehouseReceiptWeek,
+  changeIsDisplayProduct,
+  searchProducts
 };

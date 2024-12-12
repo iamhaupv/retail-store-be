@@ -59,6 +59,9 @@ var productSchema = new mongoose.Schema(
       required: true,
     },
     unit: { type: mongoose.Types.ObjectId, ref: "Unit" },
+    discount: {
+      type: Number
+    }
   },
   {
     timestamps: true,

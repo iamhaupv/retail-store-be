@@ -322,70 +322,71 @@ const productFilterByBrandName = expressAsyncHandler(async (req, res) => {
   }
 });
 // fiter product by receipt in shelf
-const productByAllReceipt = expressAsyncHandler(async (req, res) => {
-  try {
-    // Lấy tất cả các phiếu nhập kho và populate thông tin sản phẩm
-    const receipts = await WarehouseReceipt.find()
-      .populate({
-        path: "products.product",
-        populate: [
-          { path: "brand", select: "name" },
-          { path: "category", select: "name" },
-          { path: "unit", select: "name" }
-        ],
-      })
-      .populate({
-        path: "products.unit",
-        select: "convertQuantity",
-      })
-      .sort({ createdAt: -1 })
-      .exec();
-    // Lọc và tính toán số lượng sản phẩm từ các phiếu
-    const products = receipts.flatMap((receipt) =>
-      receipt.products.map((item) => {
-        const convertQuantity = item.unit?.convertQuantity || 1; // Lấy hệ số quy đổi
-        const calculatedQuantity = item.quantityDynamic
-          ? item.quantity * convertQuantity
-          : 0; // Tính toán số lượng
+// const productByAllReceipt = expressAsyncHandler(async (req, res) => {
+//   try {
+//     // Lấy tất cả các phiếu nhập kho và populate thông tin sản phẩm
+//     const receipts = await WarehouseReceipt.find()
+//       .populate({
+//         path: "products.product",
+//         populate: [
+//           { path: "brand", select: "name" },
+//           { path: "category", select: "name" },
+//           { path: "unit", select: "name" }
+//         ],
+//       })
+//       .populate({
+//         path: "products.unit",
+//         select: "convertQuantity",
+//       })
+//       .sort({ createdAt: -1 })
+//       .exec();
+//     // Lọc và tính toán số lượng sản phẩm từ các phiếu
+//     const products = receipts.flatMap((receipt) =>
+//       receipt.products.map((item) => {
+//         const convertQuantity = item.unit?.convertQuantity || 1; // Lấy hệ số quy đổi
+//         const calculatedQuantity = item.quantityDynamic
+//           ? item.quantity * convertQuantity
+//           : 0; // Tính toán số lượng
 
-        const product = item.product || {};
-        const price = product.price || 0; // Giá sản phẩm từ product
+//         const product = item.product || {};
+//         const price = product.price || 0; // Giá sản phẩm từ product
 
-        // Lấy importPrice từ item
-        const importPrice = item.importPrice || 0; // Giá nhập vào
+//         // Lấy importPrice từ item
+//         const importPrice = item.importPrice || 0; // Giá nhập vào
 
-        return {
-          unit: product?.unit?.name,  
-          expires: item.expires,
-          idPNK: receipt.idPNK,
-          images: product.images || [], // Nếu không có hình ảnh, trả về mảng rỗng
-          title: product.title || "N/A", // Tiêu đề mặc định nếu không có
-          category: product.category?.name || "N/A",
-          brand: product.brand?.name || "N/A",
-          quantity: calculatedQuantity, // Số lượng đã quy đổi
-          price: price, // Giá bán
-          importPrice: importPrice, // Thêm importPrice vào kết quả
-          _id: product._id,
-          warehouseReceipt: receipt._id,
-          quantityDynamic: item.quantityDynamic || 0,
-          id: product.id,
-          sumQuantity: product.sumQuantity,
-        };
-      })
-    );
+//         return {
+//           unit: product?.unit?.name,  
+//           expires: item.expires,
+//           idPNK: receipt.idPNK,
+//           images: product.images || [], // Nếu không có hình ảnh, trả về mảng rỗng
+//           title: product.title || "N/A", // Tiêu đề mặc định nếu không có
+//           category: product.category?.name || "N/A",
+//           brand: product.brand?.name || "N/A",
+//           quantity: calculatedQuantity, // Số lượng đã quy đổi
+//           price: price, // Giá bán
+//           importPrice: importPrice, // Thêm importPrice vào kết quả
+//           _id: product._id,
+//           warehouseReceipt: receipt._id,
+//           quantityDynamic: item.quantityDynamic || 0,
+//           id: product.id,
+//           sumQuantity: product.sumQuantity,
+//           discount: product.discount || 0
+//         };
+//       })
+//     );
 
-    // Trả về kết quả
-    return res.status(200).json({
-      success: products.length > 0,
-      products: products.length > 0 ? products : "Không có sản phẩm nào.",
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Đã xảy ra lỗi trong quá trình xử lý.",
-    });
-  }
-});
+//     // Trả về kết quả
+//     return res.status(200).json({
+//       success: products.length > 0,
+//       products: products.length > 0 ? products : "Không có sản phẩm nào.",
+//     });
+//   } catch (error) {
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message || "Đã xảy ra lỗi trong quá trình xử lý.",
+//     });
+//   }
+// });
 
 const filterProductByName = expressAsyncHandler(async (req, res) => {
   const { title } = req.body;
@@ -523,7 +524,10 @@ const filterProductMultiCondition = expressAsyncHandler(async (req, res) => {
   // Fetch products based on constructed query
   const products = await Product.find(query)
     .populate("brand")
-    .populate("category");
+    .populate("category").populate({
+      path: "unit",
+      select: "name"
+    })
 
   return res.status(200).json({
     success: true,
@@ -563,12 +567,12 @@ const getAllProductsPagination = asyncHandler(async (req, res) => {
     const products = await Product.find({ isDisplay: true })
       .populate("brand")
       .populate("category")
-      .sort({ createdAt: -1 })
+      .sort({ id: -1 })
       .skip(skip)
       .limit(currentLimit)
       .exec();
 
-    const totalProducts = await Product.countDocuments({ isDisplay: true });
+    const totalProducts = await Product.find({ isDisplay: true }).sort({id: -1});
 
     return res.status(200).json({
       success: true,
@@ -992,6 +996,108 @@ const filterReceiptByProduct = expressAsyncHandler(async (req, res) => {
   }
 });
 
+const addDiscount = expressAsyncHandler(async (req, res) => {
+  const { id, discount } = req.body;
+
+  // Kiểm tra xem ID và discount có được cung cấp hay không
+  if (!id || discount === undefined) {
+    return res.status(400).json({
+      success: false,
+      message: "ID and discount are required"
+    });
+  }
+
+  // Tìm sản phẩm theo id
+  const product = await Product.findOne({ id: id });
+
+  if (!product) {
+    return res.status(404).json({
+      success: false,
+      message: "Product not found"
+    });
+  }
+
+  // Cập nhật trường discount vào sản phẩm
+  product.discount = discount;
+
+  // Lưu lại thay đổi vào cơ sở dữ liệu
+  await product.save();
+
+  return res.status(200).json({
+    success: true,
+    message: "Discount added successfully",
+    product // Trả về sản phẩm đã được thêm trường discount
+  });
+});
+
+const productByAllReceipt = expressAsyncHandler(async (req, res) => {
+  try {
+    // Lấy tất cả các phiếu nhập kho và populate thông tin sản phẩm
+    const receipts = await WarehouseReceipt.find()
+      .populate({
+        path: "products.product",
+        populate: [
+          { path: "brand", select: "name" },
+          { path: "category", select: "name" },
+          { path: "unit", select: "name" }
+        ],
+      })
+      .populate({
+        path: "products.unit",
+        select: "convertQuantity",
+      })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    // Lọc và tính toán số lượng sản phẩm từ các phiếu
+    const products = receipts.flatMap((receipt) =>
+      receipt.products
+        .filter((item) => item.isDisplay) // Chỉ giữ các sản phẩm có isDisplay: true
+        .map((item) => {
+          const convertQuantity = item.unit?.convertQuantity || 1; // Lấy hệ số quy đổi
+          const calculatedQuantity = item.quantityDynamic
+            ? item.quantity * convertQuantity
+            : 0; // Tính toán số lượng
+
+          const product = item.product || {};
+          const price = product.price || 0; // Giá sản phẩm từ product
+
+          // Lấy importPrice từ item
+          const importPrice = item.importPrice || 0; // Giá nhập vào
+
+          return {
+            unit: product?.unit?.name,  
+            expires: item.expires,
+            idPNK: receipt.idPNK,
+            images: product.images || [], // Nếu không có hình ảnh, trả về mảng rỗng
+            title: product.title || "N/A", // Tiêu đề mặc định nếu không có
+            category: product.category?.name || "N/A",
+            brand: product.brand?.name || "N/A",
+            quantity: calculatedQuantity, // Số lượng đã quy đổi
+            price: price, // Giá bán
+            importPrice: importPrice, // Thêm importPrice vào kết quả
+            _id: product._id,
+            warehouseReceipt: receipt._id,
+            quantityDynamic: item.quantityDynamic || 0,
+            id: product.id,
+            sumQuantity: product.sumQuantity,
+            discount: product.discount || 0
+          };
+        })
+    );
+
+    // Trả về kết quả
+    return res.status(200).json({
+      success: products.length > 0,
+      products: products.length > 0 ? products : "Không có sản phẩm nào.",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Đã xảy ra lỗi trong quá trình xử lý.",
+    });
+  }
+});
 
 
 
@@ -1020,5 +1126,6 @@ module.exports = {
   filterProductSumQuantity,
   filterProductById,
   filterReceiptByProduct,
-  lastIdNumber
+  lastIdNumber,
+  addDiscount
 };
