@@ -400,7 +400,7 @@ const filterProductByName = expressAsyncHandler(async (req, res) => {
   }
 
   const products = await Product.find({
-    title: { $regex: title, $options: "i" },
+    title: { $regex: title, $options: "i" }, isDisplay: true
   }).populate("brand");
 
   return res.status(200).json({
@@ -535,13 +535,62 @@ const filterProductMultiCondition = expressAsyncHandler(async (req, res) => {
   });
 });
 // filter price by name
+// const filterPriceByProductName = expressAsyncHandler(async (req, res) => {
+//   const { title } = req.body;
+//   const product = await Product.findOne({ title, isDisplay: true });
+//   return res.status(200).json({
+//     success: product ? true : false,
+//     product: product ? product : "Cannot get product",
+//   });
+// });
 const filterPriceByProductName = expressAsyncHandler(async (req, res) => {
   const { title } = req.body;
-  const product = await Product.findOne({ title });
-  return res.status(200).json({
-    success: product ? true : false,
-    product: product ? product : "Cannot get product",
-  });
+
+  try {
+    // Tìm sản phẩm có `title`, `isDisplay = true`, và `quantity > 0`
+    const product = await Product.findOne({ title, isDisplay: true, quantity: { $gt: 0 } });
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found or not available",
+      });
+    }
+
+    // Tìm các WarehouseReceipt chứa sản phẩm
+    const warehouseReceipts = await WarehouseReceipt.find({
+      "products.product": product._id,
+      "products.isDisplay": true,
+    });
+
+    // Kiểm tra nếu sản phẩm không có trong phiếu kho hiển thị
+    const isDisplayInAnyReceipt = warehouseReceipts.some((receipt) =>
+      receipt.products.some(
+        (productInReceipt) =>
+          productInReceipt.product.toString() === product._id.toString() &&
+          productInReceipt.isDisplay === true
+      )
+    );
+
+    if (!isDisplayInAnyReceipt) {
+      return res.status(200).json({
+        success: false,
+        message: "Product is not available in any warehouse receipts",
+      });
+    }
+
+    // Nếu hợp lệ, trả về toàn bộ thông tin của sản phẩm
+    return res.status(200).json({
+      success: true,
+      product,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
 });
 
 // pagination product
@@ -808,12 +857,63 @@ const addProductToShelf = expressAsyncHandler(async (req, res) => {
   });
 });
 
+// const filterProductSumQuantity = expressAsyncHandler(async (req, res) => {
+//   const products = await Product.find({ quantity: { $gte: 1 } , isDisplay: true});
+//   return res.status(200).json({
+//     success: products ? true : false,
+//     products: products ? products : "Cannot get products",
+//   });
+// });
+
 const filterProductSumQuantity = expressAsyncHandler(async (req, res) => {
-  const products = await Product.find({ quantity: { $gte: 1 } });
-  return res.status(200).json({
-    success: products ? true : false,
-    products: products ? products : "Cannot get products",
-  });
+  try {
+    // Lọc các sản phẩm có quantity > 0 và isDisplay là true trong Product
+    const products = await Product.find({ quantity: { $gte: 1 }, isDisplay: true });
+
+    const filteredProducts = [];
+
+    // Duyệt qua từng sản phẩm trong danh sách
+    for (let product of products) {
+      // Kiểm tra các phiếu kho có chứa sản phẩm này
+      let isDisplayInAnyReceipt = false;
+
+      // Tìm các WarehouseReceipt có chứa sản phẩm này
+      const warehouseReceipts = await WarehouseReceipt.find({
+        "products.product": product._id,
+      });
+
+      // Kiểm tra các phiếu kho này để tìm xem có bất kỳ sản phẩm nào có isDisplay là true
+      for (let receipt of warehouseReceipts) {
+        // Duyệt qua tất cả sản phẩm trong phiếu kho để kiểm tra isDisplay
+        for (let productInReceipt of receipt.products) {
+          if (productInReceipt.product.toString() === product._id.toString() && productInReceipt.isDisplay) {
+            isDisplayInAnyReceipt = true;
+            break;
+          }
+        }
+        if (isDisplayInAnyReceipt) {
+          break; // Nếu tìm thấy, không cần kiểm tra thêm các phiếu kho khác
+        }
+      }
+
+      // Nếu có ít nhất một sản phẩm có isDisplay là true trong các phiếu kho, thêm sản phẩm vào kết quả
+      if (isDisplayInAnyReceipt) {
+        filteredProducts.push(product);
+      }
+    }
+
+    return res.status(200).json({
+      success: filteredProducts.length > 0,
+      products: filteredProducts.length > 0 ? filteredProducts : "No products found",
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
 });
 
 const filterProductById = expressAsyncHandler(async (req, res) => {
@@ -826,66 +926,6 @@ const filterProductById = expressAsyncHandler(async (req, res) => {
     products: products ? products : "Cannot get products",
   });
 });
-
-// const filterReceiptByProduct = expressAsyncHandler(async (req, res) => {
-//   // Kiểm tra input
-//   if (!req.body || !req.body.title) {
-//     return res
-//       .status(400)
-//       .json({ success: false, mes: "Product title is required!" });
-//   }
-
-//   const { title } = req.body;
-
-//   // Tìm sản phẩm theo tên
-//   const product = await Product.findOne({ title: title });
-
-//   // Kiểm tra nếu sản phẩm không tồn tại
-//   if (!product) {
-//     return res.status(404).json({
-//       success: false,
-//       mes: "Product not found",
-//     });
-//   }
-
-//   // Lấy tất cả các phiếu nhập kho có chứa sản phẩm này
-//   const warehouseReceipts = await WarehouseReceipt.find({
-//     "products.product": product._id, // Lọc theo sản phẩm này trong các phiếu nhập kho
-//   }).populate({
-//     path: "products.product", // Lọc thông tin sản phẩm trong phiếu nhập kho
-//     select: "_id title", // Lấy thông tin cần thiết từ sản phẩm
-//   });
-
-//   // Lọc các phiếu nhập kho có quantity > 0
-//   const filteredReceipts = warehouseReceipts.filter((receipt) => {
-//     return receipt.products.some((productItem) => {
-//       return (
-//         productItem.product._id.toString() === product._id.toString() &&
-//         productItem.quantityDynamic > 0
-//       );
-//     });
-//   });
-
-//   // Kiểm tra nếu có phiếu nhập kho thỏa mãn
-//   if (filteredReceipts.length > 0) {
-//     return res.status(200).json({
-//       success: true,
-//       receipts: filteredReceipts.map((receipt) => ({
-//         _id: receipt._id,
-//         idPNK: receipt.idPNK, // Trả về idPNK của phiếu nhập kho
-//         products: receipt.products.filter(
-//           (productItem) =>
-//             productItem.product._id.toString() === product._id.toString()
-//         ),
-//       })),
-//     });
-//   } else {
-//     return res.status(404).json({
-//       success: false,
-//       mes: "No receipts found with product quantity greater than 0",
-//     });
-//   }
-// });
 
 const lastIdNumber = expressAsyncHandler(async (req, res) => {
   try {
@@ -908,6 +948,95 @@ const lastIdNumber = expressAsyncHandler(async (req, res) => {
   }
 });
 
+// const filterReceiptByProduct = expressAsyncHandler(async (req, res) => {
+//   // Kiểm tra input
+//   if (!req.body || !req.body.title) {
+//     return res
+//       .status(400)
+//       .json({ success: false, mes: "Product title is required!" });
+//   }
+
+//   const { title } = req.body;
+
+//   // Tìm sản phẩm theo tên
+//   const product = await Product.findOne({ title: title, isDisplay: true });
+
+//   // Kiểm tra nếu sản phẩm không tồn tại
+//   if (!product) {
+//     return res.status(404).json({
+//       success: false,
+//       mes: "Product not found",
+//     });
+//   }
+
+//   // Lấy ngày hiện tại
+//   const currentDate = new Date();
+//   console.log("Current date: ", currentDate);  // Debug log ngày hiện tại
+
+//   // Tính ngày hiện tại cộng thêm 10 ngày
+//   const tenDaysLater = new Date();
+//   // tenDaysLater.setDate(currentDate.getDate() + 10);
+//   tenDaysLater.setDate(currentDate.getDate());
+//   console.log("Ten days later: ", tenDaysLater);  // Debug log ngày hiện tại cộng 10 ngày
+
+//   // Lấy tất cả các phiếu nhập kho có chứa sản phẩm này
+//   const warehouseReceipts = await WarehouseReceipt.find({
+//     "products.product": product._id, // Lọc theo sản phẩm này trong các phiếu nhập kho
+//   }).populate({
+//     path: "products.product", // Lọc thông tin sản phẩm trong phiếu nhập kho
+//     select: "_id title expires", // Lấy thông tin cần thiết từ sản phẩm, bao gồm expires
+//   });
+
+//   // Lọc các phiếu nhập kho có quantity > 0 và sản phẩm có ngày hết hạn > ngày hiện tại + 10 ngày
+//   const filteredReceipts = warehouseReceipts.filter((receipt) => {
+//     return receipt.products.some((productItem) => {
+//       let expires = productItem.expires;  // Lấy giá trị expires
+//       console.log("Expires value for product:", expires);  // Debug log giá trị expires
+//       console.log(productItem.importPrice);
+      
+//       // Kiểm tra nếu expires là một giá trị hợp lệ
+//       const expiresDate = expires && !isNaN(new Date(expires).getTime()) 
+//                           ? new Date(expires) 
+//                           : null;
+
+//       if (!expiresDate) {
+//         console.log("Invalid expires date for product:", productItem.product.title);  // Debug log khi có lỗi
+//         return false;  // Trả về false nếu expires không hợp lệ
+//       }
+
+//       console.log("Expires Date: ", expiresDate); // Debug log ngày hết hạn của sản phẩm
+
+//       // Kiểm tra ngày hết hạn phải lớn hơn ngày hiện tại + 10 ngày
+//       return (
+//         productItem.product._id.toString() === product._id.toString() &&
+//         productItem.quantityDynamic > 0 &&
+//         expiresDate > tenDaysLater // Kiểm tra ngày hết hạn phải lớn hơn ngày hiện tại + 10 ngày
+//       );
+//     });
+//   });
+
+//   // Kiểm tra nếu có phiếu nhập kho thỏa mãn
+//   if (filteredReceipts.length > 0) {
+//     return res.status(200).json({
+//       success: true,
+//       receipts: filteredReceipts.map((receipt) => ({
+//         _id: receipt._id,
+//         idPNK: receipt.idPNK, // Trả về idPNK của phiếu nhập kho
+//         products: receipt.products.filter(
+//           (productItem) =>
+//             productItem.product._id.toString() === product._id.toString()
+//         ),
+//       })),
+//     });
+//   } else {
+//     return res.status(404).json({
+//       success: false,
+//       mes: "No receipts found with product quantity greater than 0 and expiration date after 10 days from now",
+//     });
+//   }
+// });
+
+
 const filterReceiptByProduct = expressAsyncHandler(async (req, res) => {
   // Kiểm tra input
   if (!req.body || !req.body.title) {
@@ -918,8 +1047,8 @@ const filterReceiptByProduct = expressAsyncHandler(async (req, res) => {
 
   const { title } = req.body;
 
-  // Tìm sản phẩm theo tên
-  const product = await Product.findOne({ title: title });
+  // Tìm sản phẩm theo tên và có isDisplay = true
+  const product = await Product.findOne({ title: title, isDisplay: true });
 
   // Kiểm tra nếu sản phẩm không tồn tại
   if (!product) {
@@ -935,8 +1064,7 @@ const filterReceiptByProduct = expressAsyncHandler(async (req, res) => {
 
   // Tính ngày hiện tại cộng thêm 10 ngày
   const tenDaysLater = new Date();
-  // tenDaysLater.setDate(currentDate.getDate() + 10);
-  tenDaysLater.setDate(currentDate.getDate());
+  tenDaysLater.setDate(currentDate.getDate() + 10);
   console.log("Ten days later: ", tenDaysLater);  // Debug log ngày hiện tại cộng 10 ngày
 
   // Lấy tất cả các phiếu nhập kho có chứa sản phẩm này
@@ -944,16 +1072,16 @@ const filterReceiptByProduct = expressAsyncHandler(async (req, res) => {
     "products.product": product._id, // Lọc theo sản phẩm này trong các phiếu nhập kho
   }).populate({
     path: "products.product", // Lọc thông tin sản phẩm trong phiếu nhập kho
-    select: "_id title expires", // Lấy thông tin cần thiết từ sản phẩm, bao gồm expires
+    select: "_id title expires isDisplay quantityDynamic", // Lấy thông tin cần thiết từ sản phẩm
   });
 
-  // Lọc các phiếu nhập kho có quantity > 0 và sản phẩm có ngày hết hạn > ngày hiện tại + 10 ngày
+  // Lọc các phiếu nhập kho có quantityDynamic > 0 và sản phẩm có ngày hết hạn > ngày hiện tại + 10 ngày và isDisplay là true
   const filteredReceipts = warehouseReceipts.filter((receipt) => {
     return receipt.products.some((productItem) => {
       let expires = productItem.expires;  // Lấy giá trị expires
       console.log("Expires value for product:", expires);  // Debug log giá trị expires
-      console.log(productItem.importPrice);
-      
+      console.log("QuantityDynamic: ", productItem.quantityDynamic);
+
       // Kiểm tra nếu expires là một giá trị hợp lệ
       const expiresDate = expires && !isNaN(new Date(expires).getTime()) 
                           ? new Date(expires) 
@@ -966,11 +1094,12 @@ const filterReceiptByProduct = expressAsyncHandler(async (req, res) => {
 
       console.log("Expires Date: ", expiresDate); // Debug log ngày hết hạn của sản phẩm
 
-      // Kiểm tra ngày hết hạn phải lớn hơn ngày hiện tại + 10 ngày
+      // Kiểm tra ngày hết hạn phải lớn hơn ngày hiện tại + 10 ngày và isDisplay phải là true
       return (
         productItem.product._id.toString() === product._id.toString() &&
         productItem.quantityDynamic > 0 &&
-        expiresDate > tenDaysLater // Kiểm tra ngày hết hạn phải lớn hơn ngày hiện tại + 10 ngày
+        expiresDate > tenDaysLater && // Kiểm tra ngày hết hạn phải lớn hơn ngày hiện tại + 10 ngày
+        productItem.isDisplay === true // Kiểm tra isDisplay là true
       );
     });
   });
@@ -991,10 +1120,11 @@ const filterReceiptByProduct = expressAsyncHandler(async (req, res) => {
   } else {
     return res.status(404).json({
       success: false,
-      mes: "No receipts found with product quantity greater than 0 and expiration date after 10 days from now",
+      mes: "No receipts found with product quantity greater than 0, expiration date after 10 days from now, and isDisplay true",
     });
   }
 });
+
 
 const addDiscount = expressAsyncHandler(async (req, res) => {
   const { id, discount } = req.body;

@@ -1509,7 +1509,7 @@ const top5ProductLast7Days = expressAsyncHandler(async (req, res) => {
     sevenDaysAgo.setDate(currentDate.getDate() - 7); // Trừ đi 7 ngày
 
     // Aggregation để tìm các sản phẩm bán chạy nhất trong 7 ngày qua
-    const result = await Order.aggregate([
+    const top5Result = await Order.aggregate([
       {
         $match: {
           createdAt: {
@@ -1554,41 +1554,106 @@ const top5ProductLast7Days = expressAsyncHandler(async (req, res) => {
       },
       {
         $project: {
+          name: "$title", // Thêm tên sản phẩm
+          value: "$totalQuantity", // Thêm số lượng bán được
           id: 1, // ID sản phẩm tùy chỉnh
           title: 1, // Tên sản phẩm
-          totalQuantity: 1, // Số lượng bán được
+          totalQuantity: 1, // Tổng số lượng bán được
           totalAmount: 1, // Tổng số tiền
           image: 1, // Hình ảnh đầu tiên trong mảng images
         },
       },
     ]);
 
-    // Nếu ít hơn 5 sản phẩm, thêm vào những sản phẩm null
-    const missingCount = 5 - result.length;
-    if (missingCount > 0) {
-      for (let i = 0; i < missingCount; i++) {
-        result.push({
-          id: null, // ID sản phẩm là null nếu thiếu
-          title: null, // Tên sản phẩm là null nếu thiếu
-          totalQuantity: null, // Số lượng bán được là null nếu thiếu
-          totalAmount: null, // Tổng số tiền là null nếu thiếu
-          image: null, // Hình ảnh là null nếu thiếu
-        });
-      }
-    }
+    // Aggregation để tính tổng số lượng và tổng doanh thu của các sản phẩm còn lại (không nằm trong top 5)
+    const remainingResult = await Order.aggregate([
+      {
+        $match: {
+          createdAt: {
+            $gte: sevenDaysAgo,
+            $lt: currentDate,
+          },
+        },
+      },
+      {
+        $unwind: "$products", // Unwind mảng sản phẩm
+      },
+      {
+        $lookup: {
+          from: "products",
+          localField: "products.product",
+          foreignField: "_id",
+          as: "productDetails",
+        },
+      },
+      {
+        $unwind: "$productDetails", // Unwind kết quả từ $lookup
+      },
+      {
+        $group: {
+          _id: "$productDetails._id", // Nhóm theo ID sản phẩm
+          totalQuantity: { $sum: "$products.quantity" }, // Tính tổng số lượng bán được
+          totalAmount: {
+            $sum: {
+              $multiply: ["$products.quantity", "$productDetails.price"],
+            },
+          }, // Tính tổng doanh thu của sản phẩm
+          title: { $first: "$productDetails.title" }, // Lấy tên sản phẩm
+          id: { $first: "$productDetails.id" }, // Lấy ID tùy chỉnh (id) của sản phẩm
+          image: { $first: { $arrayElemAt: ["$productDetails.images", 0] } }, // Lấy hình ảnh đầu tiên
+        },
+      },
+      {
+        $sort: { totalQuantity: -1 }, // Sắp xếp theo tổng số lượng bán được giảm dần
+      },
+      {
+        $skip: 5, // Bỏ qua 5 sản phẩm đầu tiên (top 5)
+      },
+      {
+        $group: {
+          _id: null,
+          totalQuantity: { $sum: "$totalQuantity" }, // Tổng số lượng các sản phẩm còn lại
+          totalAmount: { $sum: "$totalAmount" }, // Tổng doanh thu các sản phẩm còn lại
+        },
+      },
+    ]);
 
-    // Trả về danh sách top 5 sản phẩm
-    return res.status(200).json({ total: result });
+    // If there are remaining products, add them as "Others"
+    const remainingData = remainingResult.length > 0
+      ? [{
+          name: "Others",
+          value: remainingResult[0].totalQuantity,
+          totalQuantity: remainingResult[0].totalQuantity,
+          totalAmount: remainingResult[0].totalAmount,
+          id: null,
+          title: "Others",
+          image: null,
+        }]
+      : [{
+          name: "Others",
+          value: 0,
+          totalQuantity: 0,
+          totalAmount: 0,
+          id: null,
+          title: "Others",
+          image: null,
+        }];
+
+    // Trả về danh sách top 5 sản phẩm và phần còn lại
+    return res.status(200).json({
+      total: [
+        ...top5Result,
+        ...remainingData,
+      ],
+    });
   } catch (error) {
-    console.error(
-      "Error while fetching top 5 products in the last 7 days:",
-      error
-    );
-    return res
-      .status(500)
-      .json({ error: "An error occurred while processing the request" });
+    console.error("Error while fetching top 5 products in the last 7 days:", error);
+    return res.status(500).json({ error: "An error occurred while processing the request" });
   }
 });
+
+
+
 const top5ProductLast30Days = expressAsyncHandler(async (req, res) => {
   try {
     // Tính toán ngày hiện tại và ngày cách đây 7 ngày
@@ -1597,7 +1662,7 @@ const top5ProductLast30Days = expressAsyncHandler(async (req, res) => {
     sevenDaysAgo.setDate(currentDate.getDate() - 30); // Trừ đi 7 ngày
 
     // Aggregation để tìm các sản phẩm bán chạy nhất trong 7 ngày qua
-    const result = await Order.aggregate([
+    const top5Result = await Order.aggregate([
       {
         $match: {
           createdAt: {
@@ -1642,41 +1707,105 @@ const top5ProductLast30Days = expressAsyncHandler(async (req, res) => {
       },
       {
         $project: {
+          name: "$title", // Thêm tên sản phẩm
+          value: "$totalQuantity", // Thêm số lượng bán được
           id: 1, // ID sản phẩm tùy chỉnh
           title: 1, // Tên sản phẩm
-          totalQuantity: 1, // Số lượng bán được
+          totalQuantity: 1, // Tổng số lượng bán được
           totalAmount: 1, // Tổng số tiền
           image: 1, // Hình ảnh đầu tiên trong mảng images
         },
       },
     ]);
 
-    // Nếu ít hơn 5 sản phẩm, thêm vào những sản phẩm null
-    const missingCount = 5 - result.length;
-    if (missingCount > 0) {
-      for (let i = 0; i < missingCount; i++) {
-        result.push({
-          id: null, // ID sản phẩm là null nếu thiếu
-          title: null, // Tên sản phẩm là null nếu thiếu
-          totalQuantity: null, // Số lượng bán được là null nếu thiếu
-          totalAmount: null, // Tổng số tiền là null nếu thiếu
-          image: null, // Hình ảnh là null nếu thiếu
-        });
-      }
-    }
+    // Aggregation để tính tổng số lượng và tổng doanh thu của các sản phẩm còn lại (không nằm trong top 5)
+    const remainingResult = await Order.aggregate([
+      {
+        $match: {
+          createdAt: {
+            $gte: sevenDaysAgo,
+            $lt: currentDate,
+          },
+        },
+      },
+      {
+        $unwind: "$products", // Unwind mảng sản phẩm
+      },
+      {
+        $lookup: {
+          from: "products",
+          localField: "products.product",
+          foreignField: "_id",
+          as: "productDetails",
+        },
+      },
+      {
+        $unwind: "$productDetails", // Unwind kết quả từ $lookup
+      },
+      {
+        $group: {
+          _id: "$productDetails._id", // Nhóm theo ID sản phẩm
+          totalQuantity: { $sum: "$products.quantity" }, // Tính tổng số lượng bán được
+          totalAmount: {
+            $sum: {
+              $multiply: ["$products.quantity", "$productDetails.price"],
+            },
+          }, // Tính tổng doanh thu của sản phẩm
+          title: { $first: "$productDetails.title" }, // Lấy tên sản phẩm
+          id: { $first: "$productDetails.id" }, // Lấy ID tùy chỉnh (id) của sản phẩm
+          image: { $first: { $arrayElemAt: ["$productDetails.images", 0] } }, // Lấy hình ảnh đầu tiên
+        },
+      },
+      {
+        $sort: { totalQuantity: -1 }, // Sắp xếp theo tổng số lượng bán được giảm dần
+      },
+      {
+        $skip: 5, // Bỏ qua 5 sản phẩm đầu tiên (top 5)
+      },
+      {
+        $group: {
+          _id: null,
+          totalQuantity: { $sum: "$totalQuantity" }, // Tổng số lượng các sản phẩm còn lại
+          totalAmount: { $sum: "$totalAmount" }, // Tổng doanh thu các sản phẩm còn lại
+        },
+      },
+    ]);
 
-    // Trả về danh sách top 5 sản phẩm
-    return res.status(200).json({ total: result });
+    // If there are remaining products, add them as "Others"
+    const remainingData = remainingResult.length > 0
+      ? [{
+          name: "Others",
+          value: remainingResult[0].totalQuantity,
+          totalQuantity: remainingResult[0].totalQuantity,
+          totalAmount: remainingResult[0].totalAmount,
+          id: null,
+          title: "Others",
+          image: null,
+        }]
+      : [{
+          name: "Others",
+          value: 0,
+          totalQuantity: 0,
+          totalAmount: 0,
+          id: null,
+          title: "Others",
+          image: null,
+        }];
+
+    // Trả về danh sách top 5 sản phẩm và phần còn lại
+    return res.status(200).json({
+      total: [
+        ...top5Result,
+        ...remainingData,
+      ],
+    });
   } catch (error) {
-    console.error(
-      "Error while fetching top 5 products in the last 7 days:",
-      error
-    );
-    return res
-      .status(500)
-      .json({ error: "An error occurred while processing the request" });
+    console.error("Error while fetching top 5 products in the last 7 days:", error);
+    return res.status(500).json({ error: "An error occurred while processing the request" });
   }
 });
+
+
 const top5ProductLast365Days = expressAsyncHandler(async (req, res) => {
   try {
     // Tính toán ngày hiện tại và ngày cách đây 7 ngày
@@ -1685,7 +1814,7 @@ const top5ProductLast365Days = expressAsyncHandler(async (req, res) => {
     sevenDaysAgo.setDate(currentDate.getDate() - 365); // Trừ đi 7 ngày
 
     // Aggregation để tìm các sản phẩm bán chạy nhất trong 7 ngày qua
-    const result = await Order.aggregate([
+    const top5Result = await Order.aggregate([
       {
         $match: {
           createdAt: {
@@ -1730,54 +1859,210 @@ const top5ProductLast365Days = expressAsyncHandler(async (req, res) => {
       },
       {
         $project: {
+          name: "$title", // Thêm tên sản phẩm
+          value: "$totalQuantity", // Thêm số lượng bán được
           id: 1, // ID sản phẩm tùy chỉnh
           title: 1, // Tên sản phẩm
-          totalQuantity: 1, // Số lượng bán được
+          totalQuantity: 1, // Tổng số lượng bán được
           totalAmount: 1, // Tổng số tiền
           image: 1, // Hình ảnh đầu tiên trong mảng images
         },
       },
     ]);
 
-    // Nếu ít hơn 5 sản phẩm, thêm vào những sản phẩm null
-    const missingCount = 5 - result.length;
-    if (missingCount > 0) {
-      for (let i = 0; i < missingCount; i++) {
-        result.push({
-          id: null, // ID sản phẩm là null nếu thiếu
-          title: null, // Tên sản phẩm là null nếu thiếu
-          totalQuantity: null, // Số lượng bán được là null nếu thiếu
-          totalAmount: null, // Tổng số tiền là null nếu thiếu
-          image: null, // Hình ảnh là null nếu thiếu
-        });
-      }
-    }
+    // Aggregation để tính tổng số lượng và tổng doanh thu của các sản phẩm còn lại (không nằm trong top 5)
+    const remainingResult = await Order.aggregate([
+      {
+        $match: {
+          createdAt: {
+            $gte: sevenDaysAgo,
+            $lt: currentDate,
+          },
+        },
+      },
+      {
+        $unwind: "$products", // Unwind mảng sản phẩm
+      },
+      {
+        $lookup: {
+          from: "products",
+          localField: "products.product",
+          foreignField: "_id",
+          as: "productDetails",
+        },
+      },
+      {
+        $unwind: "$productDetails", // Unwind kết quả từ $lookup
+      },
+      {
+        $group: {
+          _id: "$productDetails._id", // Nhóm theo ID sản phẩm
+          totalQuantity: { $sum: "$products.quantity" }, // Tính tổng số lượng bán được
+          totalAmount: {
+            $sum: {
+              $multiply: ["$products.quantity", "$productDetails.price"],
+            },
+          }, // Tính tổng doanh thu của sản phẩm
+          title: { $first: "$productDetails.title" }, // Lấy tên sản phẩm
+          id: { $first: "$productDetails.id" }, // Lấy ID tùy chỉnh (id) của sản phẩm
+          image: { $first: { $arrayElemAt: ["$productDetails.images", 0] } }, // Lấy hình ảnh đầu tiên
+        },
+      },
+      {
+        $sort: { totalQuantity: -1 }, // Sắp xếp theo tổng số lượng bán được giảm dần
+      },
+      {
+        $skip: 5, // Bỏ qua 5 sản phẩm đầu tiên (top 5)
+      },
+      {
+        $group: {
+          _id: null,
+          totalQuantity: { $sum: "$totalQuantity" }, // Tổng số lượng các sản phẩm còn lại
+          totalAmount: { $sum: "$totalAmount" }, // Tổng doanh thu các sản phẩm còn lại
+        },
+      },
+    ]);
 
-    // Trả về danh sách top 5 sản phẩm
-    return res.status(200).json({ total: result });
+    // If there are remaining products, add them as "Others"
+    const remainingData = remainingResult.length > 0
+      ? [{
+          name: "Others",
+          value: remainingResult[0].totalQuantity,
+          totalQuantity: remainingResult[0].totalQuantity,
+          totalAmount: remainingResult[0].totalAmount,
+          id: null,
+          title: "Others",
+          image: null,
+        }]
+      : [{
+          name: "Others",
+          value: 0,
+          totalQuantity: 0,
+          totalAmount: 0,
+          id: null,
+          title: "Others",
+          image: null,
+        }];
+
+    // Trả về danh sách top 5 sản phẩm và phần còn lại
+    return res.status(200).json({
+      total: [
+        ...top5Result,
+        ...remainingData,
+      ],
+    });
   } catch (error) {
-    console.error(
-      "Error while fetching top 5 products in the last 7 days:",
-      error
-    );
-    return res
-      .status(500)
-      .json({ error: "An error occurred while processing the request" });
+    console.error("Error while fetching top 5 products in the last 7 days:", error);
+    return res.status(500).json({ error: "An error occurred while processing the request" });
   }
 });
+// const top5ProductCategoryLast7Days = expressAsyncHandler(async (req, res) => {
+//   try {
+//     // Tính toán ngày hiện tại và ngày cách đây 7 ngày
+//     const currentDate = new Date();
+//     const sevenDaysAgo = new Date();
+//     sevenDaysAgo.setDate(currentDate.getDate() - 7); // Trừ đi 7 ngày
+
+//     // Aggregation để tìm các loại sản phẩm bán chạy nhất trong 7 ngày qua
+//     const result = await Order.aggregate([
+//       {
+//         $match: {
+//           createdAt: {
+//             $gte: sevenDaysAgo, // Các đơn hàng từ 7 ngày trước
+//             $lt: currentDate, // Đến ngày hiện tại
+//           },
+//         },
+//       },
+//       {
+//         $unwind: "$products", // Unwind mảng sản phẩm
+//       },
+//       {
+//         $lookup: {
+//           from: "products", // Tìm trong bảng sản phẩm
+//           localField: "products.product", // Trường ID sản phẩm trong order
+//           foreignField: "_id", // Trường _id của sản phẩm trong bảng products
+//           as: "productDetails", // Alias cho chi tiết sản phẩm
+//         },
+//       },
+//       {
+//         $unwind: "$productDetails", // Unwind kết quả từ $lookup
+//       },
+//       {
+//         $lookup: {
+//           from: "categories", // Tìm trong bảng danh mục (categories)
+//           localField: "productDetails.category", // Trường ID danh mục trong sản phẩm
+//           foreignField: "_id", // Trường _id của danh mục trong bảng categories
+//           as: "categoryDetails", // Alias cho chi tiết danh mục
+//         },
+//       },
+//       {
+//         $unwind: "$categoryDetails", // Unwind kết quả từ $lookup
+//       },
+//       {
+//         $group: {
+//           _id: "$categoryDetails._id", // Nhóm theo ID danh mục
+//           totalQuantity: { $sum: "$products.quantity" }, // Tổng số lượng bán được
+//           totalAmount: {
+//             $sum: {
+//               $multiply: ["$products.quantity", "$productDetails.price"],
+//             },
+//           }, // Tính tổng doanh thu
+//           categoryName: { $first: "$categoryDetails.name" }, // Lấy tên danh mục
+//         },
+//       },
+//       {
+//         $sort: { totalQuantity: -1 }, // Sắp xếp theo tổng số lượng bán được giảm dần
+//       },
+//       {
+//         $limit: 5, // Chỉ lấy 5 loại sản phẩm bán chạy nhất
+//       },
+//       {
+//         $project: {
+//           categoryName: 1, // Tên danh mục sản phẩm
+//           totalQuantity: 1, // Tổng số lượng bán được của loại sản phẩm
+//           totalAmount: 1, // Tổng số tiền của loại sản phẩm
+//         },
+//       },
+//     ]);
+
+//     // Nếu ít hơn 5 loại sản phẩm, thêm vào những sản phẩm null
+//     const missingCount = 5 - result.length;
+//     if (missingCount > 0) {
+//       for (let i = 0; i < missingCount; i++) {
+//         result.push({
+//           categoryName: null, // Tên danh mục là null nếu thiếu
+//           totalQuantity: null, // Số lượng bán được là null nếu thiếu
+//           totalAmount: null, // Tổng số tiền là null nếu thiếu
+//         });
+//       }
+//     }
+
+//     // Trả về danh sách top 5 loại sản phẩm
+//     return res.status(200).json({ total: result });
+//   } catch (error) {
+//     console.error(
+//       "Error while fetching top 5 product categories in the last 7 days:",
+//       error
+//     );
+//     return res
+//       .status(500)
+//       .json({ error: "An error occurred while processing the request" });
+//   }
+// });
+
 const top5ProductCategoryLast7Days = expressAsyncHandler(async (req, res) => {
   try {
-    // Tính toán ngày hiện tại và ngày cách đây 7 ngày
+    // Tính toán ngày hiện tại và ngày cách đây 365 ngày
     const currentDate = new Date();
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(currentDate.getDate() - 7); // Trừ đi 7 ngày
+    const oneYearAgo = new Date();
+    oneYearAgo.setDate(currentDate.getDate() - 7); // Trừ đi 365 ngày
 
-    // Aggregation để tìm các loại sản phẩm bán chạy nhất trong 7 ngày qua
-    const result = await Order.aggregate([
+    // Aggregation để tìm các loại sản phẩm bán chạy nhất trong 365 ngày qua
+    const top5CategoryResult = await Order.aggregate([
       {
         $match: {
           createdAt: {
-            $gte: sevenDaysAgo, // Các đơn hàng từ 7 ngày trước
+            $gte: oneYearAgo, // Các đơn hàng từ 365 ngày trước
             $lt: currentDate, // Đến ngày hiện tại
           },
         },
@@ -1827,50 +2112,117 @@ const top5ProductCategoryLast7Days = expressAsyncHandler(async (req, res) => {
       },
       {
         $project: {
-          categoryName: 1, // Tên danh mục sản phẩm
-          totalQuantity: 1, // Tổng số lượng bán được của loại sản phẩm
+          name: "$categoryName", // Tên danh mục sản phẩm
+          value: "$totalQuantity", // Tổng số lượng bán được của loại sản phẩm
           totalAmount: 1, // Tổng số tiền của loại sản phẩm
         },
       },
     ]);
 
-    // Nếu ít hơn 5 loại sản phẩm, thêm vào những sản phẩm null
-    const missingCount = 5 - result.length;
-    if (missingCount > 0) {
-      for (let i = 0; i < missingCount; i++) {
-        result.push({
-          categoryName: null, // Tên danh mục là null nếu thiếu
-          totalQuantity: null, // Số lượng bán được là null nếu thiếu
-          totalAmount: null, // Tổng số tiền là null nếu thiếu
-        });
-      }
-    }
+    // Aggregation để tính tổng số lượng và tổng doanh thu của các sản phẩm còn lại (không nằm trong top 5)
+    const remainingCategoryResult = await Order.aggregate([
+      {
+        $match: {
+          createdAt: {
+            $gte: oneYearAgo,
+            $lt: currentDate,
+          },
+        },
+      },
+      {
+        $unwind: "$products", // Unwind mảng sản phẩm
+      },
+      {
+        $lookup: {
+          from: "products",
+          localField: "products.product",
+          foreignField: "_id",
+          as: "productDetails",
+        },
+      },
+      {
+        $unwind: "$productDetails", // Unwind kết quả từ $lookup
+      },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "productDetails.category",
+          foreignField: "_id",
+          as: "categoryDetails",
+        },
+      },
+      {
+        $unwind: "$categoryDetails", // Unwind kết quả từ $lookup
+      },
+      {
+        $group: {
+          _id: "$categoryDetails._id", // Nhóm theo ID danh mục
+          totalQuantity: { $sum: "$products.quantity" }, // Tính tổng số lượng bán được
+          totalAmount: {
+            $sum: {
+              $multiply: ["$products.quantity", "$productDetails.price"],
+            },
+          }, // Tính tổng doanh thu của sản phẩm
+        },
+      },
+      {
+        $sort: { totalQuantity: -1 }, // Sắp xếp theo tổng số lượng bán được giảm dần
+      },
+      {
+        $skip: 5, // Bỏ qua 5 loại sản phẩm đầu tiên (top 5)
+      },
+      {
+        $group: {
+          _id: null,
+          totalQuantity: { $sum: "$totalQuantity" }, // Tổng số lượng các loại sản phẩm còn lại
+          totalAmount: { $sum: "$totalAmount" }, // Tổng doanh thu các loại sản phẩm còn lại
+        },
+      },
+    ]);
 
-    // Trả về danh sách top 5 loại sản phẩm
-    return res.status(200).json({ total: result });
+    // Nếu có các danh mục còn lại, thêm chúng vào dưới dạng "Others"
+    const remainingCategoryData = remainingCategoryResult.length > 0
+      ? [{
+          name: "Others",
+          value: remainingCategoryResult[0].totalQuantity,
+          totalQuantity: remainingCategoryResult[0].totalQuantity,
+          totalAmount: remainingCategoryResult[0].totalAmount,
+        }]
+      : [{
+          name: "Others",
+          value: 0,
+          totalQuantity: 0,
+          totalAmount: 0,
+        }];
+
+    // Trả về danh sách top 5 loại sản phẩm và phần còn lại
+    return res.status(200).json({
+      total: [
+        ...top5CategoryResult,
+        ...remainingCategoryData,
+      ],
+    });
   } catch (error) {
-    console.error(
-      "Error while fetching top 5 product categories in the last 7 days:",
-      error
-    );
-    return res
-      .status(500)
-      .json({ error: "An error occurred while processing the request" });
+    console.error("Error while fetching top 5 product categories in the last 365 days:", error);
+    return res.status(500).json({ error: "An error occurred while processing the request" });
   }
 });
+
+
+
 const top5ProductCategoryLast30Days = expressAsyncHandler(async (req, res) => {
   try {
-    // Tính toán ngày hiện tại và ngày cách đây 7 ngày
+    // Tính toán ngày hiện tại và ngày cách đây 365 ngày
     const currentDate = new Date();
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(currentDate.getDate() - 30); // Trừ đi 7 ngày
+    const oneYearAgo = new Date();
+    oneYearAgo.setDate(currentDate.getDate() - 30); // Trừ đi 365 ngày
 
-    // Aggregation để tìm các loại sản phẩm bán chạy nhất trong 7 ngày qua
-    const result = await Order.aggregate([
+    // Aggregation để tìm các loại sản phẩm bán chạy nhất trong 365 ngày qua
+    const top5CategoryResult = await Order.aggregate([
       {
         $match: {
           createdAt: {
-            $gte: sevenDaysAgo, // Các đơn hàng từ 7 ngày trước
+            $gte: oneYearAgo, // Các đơn hàng từ 365 ngày trước
             $lt: currentDate, // Đến ngày hiện tại
           },
         },
@@ -1920,50 +2272,115 @@ const top5ProductCategoryLast30Days = expressAsyncHandler(async (req, res) => {
       },
       {
         $project: {
-          categoryName: 1, // Tên danh mục sản phẩm
-          totalQuantity: 1, // Tổng số lượng bán được của loại sản phẩm
+          name: "$categoryName", // Tên danh mục sản phẩm
+          value: "$totalQuantity", // Tổng số lượng bán được của loại sản phẩm
           totalAmount: 1, // Tổng số tiền của loại sản phẩm
         },
       },
     ]);
 
-    // Nếu ít hơn 5 loại sản phẩm, thêm vào những sản phẩm null
-    const missingCount = 5 - result.length;
-    if (missingCount > 0) {
-      for (let i = 0; i < missingCount; i++) {
-        result.push({
-          categoryName: null, // Tên danh mục là null nếu thiếu
-          totalQuantity: null, // Số lượng bán được là null nếu thiếu
-          totalAmount: null, // Tổng số tiền là null nếu thiếu
-        });
-      }
-    }
+    // Aggregation để tính tổng số lượng và tổng doanh thu của các sản phẩm còn lại (không nằm trong top 5)
+    const remainingCategoryResult = await Order.aggregate([
+      {
+        $match: {
+          createdAt: {
+            $gte: oneYearAgo,
+            $lt: currentDate,
+          },
+        },
+      },
+      {
+        $unwind: "$products", // Unwind mảng sản phẩm
+      },
+      {
+        $lookup: {
+          from: "products",
+          localField: "products.product",
+          foreignField: "_id",
+          as: "productDetails",
+        },
+      },
+      {
+        $unwind: "$productDetails", // Unwind kết quả từ $lookup
+      },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "productDetails.category",
+          foreignField: "_id",
+          as: "categoryDetails",
+        },
+      },
+      {
+        $unwind: "$categoryDetails", // Unwind kết quả từ $lookup
+      },
+      {
+        $group: {
+          _id: "$categoryDetails._id", // Nhóm theo ID danh mục
+          totalQuantity: { $sum: "$products.quantity" }, // Tính tổng số lượng bán được
+          totalAmount: {
+            $sum: {
+              $multiply: ["$products.quantity", "$productDetails.price"],
+            },
+          }, // Tính tổng doanh thu của sản phẩm
+        },
+      },
+      {
+        $sort: { totalQuantity: -1 }, // Sắp xếp theo tổng số lượng bán được giảm dần
+      },
+      {
+        $skip: 5, // Bỏ qua 5 loại sản phẩm đầu tiên (top 5)
+      },
+      {
+        $group: {
+          _id: null,
+          totalQuantity: { $sum: "$totalQuantity" }, // Tổng số lượng các loại sản phẩm còn lại
+          totalAmount: { $sum: "$totalAmount" }, // Tổng doanh thu các loại sản phẩm còn lại
+        },
+      },
+    ]);
 
-    // Trả về danh sách top 5 loại sản phẩm
-    return res.status(200).json({ total: result });
+    // Nếu có các danh mục còn lại, thêm chúng vào dưới dạng "Others"
+    const remainingCategoryData = remainingCategoryResult.length > 0
+      ? [{
+          name: "Others",
+          value: remainingCategoryResult[0].totalQuantity,
+          totalQuantity: remainingCategoryResult[0].totalQuantity,
+          totalAmount: remainingCategoryResult[0].totalAmount,
+        }]
+      : [{
+          name: "Others",
+          value: 0,
+          totalQuantity: 0,
+          totalAmount: 0,
+        }];
+
+    // Trả về danh sách top 5 loại sản phẩm và phần còn lại
+    return res.status(200).json({
+      total: [
+        ...top5CategoryResult,
+        ...remainingCategoryData,
+      ],
+    });
   } catch (error) {
-    console.error(
-      "Error while fetching top 5 product categories in the last 7 days:",
-      error
-    );
-    return res
-      .status(500)
-      .json({ error: "An error occurred while processing the request" });
+    console.error("Error while fetching top 5 product categories in the last 365 days:", error);
+    return res.status(500).json({ error: "An error occurred while processing the request" });
   }
 });
+
 const top5ProductCategoryLast365Days = expressAsyncHandler(async (req, res) => {
   try {
-    // Tính toán ngày hiện tại và ngày cách đây 7 ngày
+    // Tính toán ngày hiện tại và ngày cách đây 365 ngày
     const currentDate = new Date();
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(currentDate.getDate() - 365); // Trừ đi 7 ngày
+    const oneYearAgo = new Date();
+    oneYearAgo.setDate(currentDate.getDate() - 365); // Trừ đi 365 ngày
 
-    // Aggregation để tìm các loại sản phẩm bán chạy nhất trong 7 ngày qua
-    const result = await Order.aggregate([
+    // Aggregation để tìm các loại sản phẩm bán chạy nhất trong 365 ngày qua
+    const top5CategoryResult = await Order.aggregate([
       {
         $match: {
           createdAt: {
-            $gte: sevenDaysAgo, // Các đơn hàng từ 7 ngày trước
+            $gte: oneYearAgo, // Các đơn hàng từ 365 ngày trước
             $lt: currentDate, // Đến ngày hiện tại
           },
         },
@@ -2013,35 +2430,99 @@ const top5ProductCategoryLast365Days = expressAsyncHandler(async (req, res) => {
       },
       {
         $project: {
-          categoryName: 1, // Tên danh mục sản phẩm
-          totalQuantity: 1, // Tổng số lượng bán được của loại sản phẩm
+          name: "$categoryName", // Tên danh mục sản phẩm
+          value: "$totalQuantity", // Tổng số lượng bán được của loại sản phẩm
           totalAmount: 1, // Tổng số tiền của loại sản phẩm
         },
       },
     ]);
 
-    // Nếu ít hơn 5 loại sản phẩm, thêm vào những sản phẩm null
-    const missingCount = 5 - result.length;
-    if (missingCount > 0) {
-      for (let i = 0; i < missingCount; i++) {
-        result.push({
-          categoryName: null, // Tên danh mục là null nếu thiếu
-          totalQuantity: null, // Số lượng bán được là null nếu thiếu
-          totalAmount: null, // Tổng số tiền là null nếu thiếu
-        });
-      }
-    }
+    // Aggregation để tính tổng số lượng và tổng doanh thu của các sản phẩm còn lại (không nằm trong top 5)
+    const remainingCategoryResult = await Order.aggregate([
+      {
+        $match: {
+          createdAt: {
+            $gte: oneYearAgo,
+            $lt: currentDate,
+          },
+        },
+      },
+      {
+        $unwind: "$products", // Unwind mảng sản phẩm
+      },
+      {
+        $lookup: {
+          from: "products",
+          localField: "products.product",
+          foreignField: "_id",
+          as: "productDetails",
+        },
+      },
+      {
+        $unwind: "$productDetails", // Unwind kết quả từ $lookup
+      },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "productDetails.category",
+          foreignField: "_id",
+          as: "categoryDetails",
+        },
+      },
+      {
+        $unwind: "$categoryDetails", // Unwind kết quả từ $lookup
+      },
+      {
+        $group: {
+          _id: "$categoryDetails._id", // Nhóm theo ID danh mục
+          totalQuantity: { $sum: "$products.quantity" }, // Tính tổng số lượng bán được
+          totalAmount: {
+            $sum: {
+              $multiply: ["$products.quantity", "$productDetails.price"],
+            },
+          }, // Tính tổng doanh thu của sản phẩm
+        },
+      },
+      {
+        $sort: { totalQuantity: -1 }, // Sắp xếp theo tổng số lượng bán được giảm dần
+      },
+      {
+        $skip: 5, // Bỏ qua 5 loại sản phẩm đầu tiên (top 5)
+      },
+      {
+        $group: {
+          _id: null,
+          totalQuantity: { $sum: "$totalQuantity" }, // Tổng số lượng các loại sản phẩm còn lại
+          totalAmount: { $sum: "$totalAmount" }, // Tổng doanh thu các loại sản phẩm còn lại
+        },
+      },
+    ]);
 
-    // Trả về danh sách top 5 loại sản phẩm
-    return res.status(200).json({ total: result });
+    // Nếu có các danh mục còn lại, thêm chúng vào dưới dạng "Others"
+    const remainingCategoryData = remainingCategoryResult.length > 0
+      ? [{
+          name: "Others",
+          value: remainingCategoryResult[0].totalQuantity,
+          totalQuantity: remainingCategoryResult[0].totalQuantity,
+          totalAmount: remainingCategoryResult[0].totalAmount,
+        }]
+      : [{
+          name: "Others",
+          value: 0,
+          totalQuantity: 0,
+          totalAmount: 0,
+        }];
+
+    // Trả về danh sách top 5 loại sản phẩm và phần còn lại
+    return res.status(200).json({
+      total: [
+        ...top5CategoryResult,
+        ...remainingCategoryData,
+      ],
+    });
   } catch (error) {
-    console.error(
-      "Error while fetching top 5 product categories in the last 7 days:",
-      error
-    );
-    return res
-      .status(500)
-      .json({ error: "An error occurred while processing the request" });
+    console.error("Error while fetching top 5 product categories in the last 365 days:", error);
+    return res.status(500).json({ error: "An error occurred while processing the request" });
   }
 });
 
@@ -2437,185 +2918,185 @@ const getTotalAmountCurrentDay = async (req, res) => {
 //     });
 //   }
 // });
-const createOrder = expressAsyncHandler(async (req, res) => {
-  try {
-    const { user, products, totalAmount, receiveAmount, amountVAT, id } =
-      req.body;
+// const createOrder = expressAsyncHandler(async (req, res) => {
+//   try {
+//     const { user, products, totalAmount, receiveAmount, amountVAT, id } =
+//       req.body;
 
-    // Kiểm tra dữ liệu đầu vào
-    if (
-      !user ||
-      !products ||
-      products.length === 0 ||
-      !totalAmount ||
-      !receiveAmount ||
-      !id ||
-      !amountVAT
-    ) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Missing required fields!" });
-    }
+//     // Kiểm tra dữ liệu đầu vào
+//     if (
+//       !user ||
+//       !products ||
+//       products.length === 0 ||
+//       !totalAmount ||
+//       !receiveAmount ||
+//       !id ||
+//       !amountVAT
+//     ) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "Missing required fields!" });
+//     }
 
-    // Kiểm tra số lượng hợp lệ
-    for (const item of products) {
-      if (Number(item.quantity) <= 0) {
-        return res.status(400).json({
-          success: false,
-          message: `Invalid quantity for product ${item.product}`,
-        });
-      }
-    }
+//     // Kiểm tra số lượng hợp lệ
+//     for (const item of products) {
+//       if (Number(item.quantity) <= 0) {
+//         return res.status(400).json({
+//           success: false,
+//           message: `Invalid quantity for product ${item.product}`,
+//         });
+//       }
+//     }
 
-    // Tính tiền thối lại
-    const change = receiveAmount - totalAmount;
-    if (change < 0) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Insufficient receive amount!" });
-    }
+//     // Tính tiền thối lại
+//     const change = receiveAmount - totalAmount;
+//     if (change < 0) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "Insufficient receive amount!" });
+//     }
 
-    let updatedProducts = [];
-    let sumImportPrice = 0; // Tổng tiền nhập kho
-    let finalTotalAmount = 0; // Tổng tiền sau khi áp dụng giảm giá
-    let totalVAT = 0; // Tổng VAT
+//     let updatedProducts = [];
+//     let sumImportPrice = 0; // Tổng tiền nhập kho
+//     let finalTotalAmount = 0; // Tổng tiền sau khi áp dụng giảm giá
+//     let totalVAT = 0; // Tổng VAT
 
-    // Xử lý từng sản phẩm
-    for (const item of products) {
-      const { product, quantity, unit, warehouseReceipt: receipt } = item;
+//     // Xử lý từng sản phẩm
+//     for (const item of products) {
+//       const { product, quantity, unit, warehouseReceipt: receipt } = item;
 
-      const productQuantity = Number(quantity);
+//       const productQuantity = Number(quantity);
 
-      // Lấy thông tin đơn vị tính
-      const unitDoc = await Unit.findById(unit);
-      if (!unitDoc) {
-        return res.status(404).json({
-          success: false,
-          message: `Unit ${unit} not found!`,
-        });
-      }
+//       // Lấy thông tin đơn vị tính
+//       const unitDoc = await Unit.findById(unit);
+//       if (!unitDoc) {
+//         return res.status(404).json({
+//           success: false,
+//           message: `Unit ${unit} not found!`,
+//         });
+//       }
 
-      const convertedQuantity = productQuantity * unitDoc.convertQuantity;
+//       const convertedQuantity = productQuantity * unitDoc.convertQuantity;
 
-      // Lấy thông tin sản phẩm
-      const productDoc = await Product.findById(product);
-      if (!productDoc) {
-        return res.status(404).json({
-          success: false,
-          message: `Product ${product} not found!`,
-        });
-      }
+//       // Lấy thông tin sản phẩm
+//       const productDoc = await Product.findById(product);
+//       if (!productDoc) {
+//         return res.status(404).json({
+//           success: false,
+//           message: `Product ${product} not found!`,
+//         });
+//       }
 
-      if (productDoc.quantity < convertedQuantity) {
-        return res.status(400).json({
-          success: false,
-          message: `Not enough stock for product ${product}`,
-        });
-      }
+//       if (productDoc.quantity < convertedQuantity) {
+//         return res.status(400).json({
+//           success: false,
+//           message: `Not enough stock for product ${product}`,
+//         });
+//       }
 
-      // Lấy thông tin phiếu nhập kho
-      const warehouseReceiptDoc = await WarehouseReceipt.findById(receipt);
-      if (!warehouseReceiptDoc) {
-        return res.status(404).json({
-          success: false,
-          message: `Warehouse receipt ${receipt} not found!`,
-        });
-      }
+//       // Lấy thông tin phiếu nhập kho
+//       const warehouseReceiptDoc = await WarehouseReceipt.findById(receipt);
+//       if (!warehouseReceiptDoc) {
+//         return res.status(404).json({
+//           success: false,
+//           message: `Warehouse receipt ${receipt} not found!`,
+//         });
+//       }
 
-      // Trừ số lượng trong phiếu nhập kho
-      const productInReceipt = warehouseReceiptDoc.products.find(
-        (p) => p.product.toString() === product.toString()
-      );
-      if (productInReceipt) {
-        if (productInReceipt.quantityDynamic >= convertedQuantity) {
-          productInReceipt.quantityDynamic -= convertedQuantity;
-          await warehouseReceiptDoc.save();
+//       // Trừ số lượng trong phiếu nhập kho
+//       const productInReceipt = warehouseReceiptDoc.products.find(
+//         (p) => p.product.toString() === product.toString()
+//       );
+//       if (productInReceipt) {
+//         if (productInReceipt.quantityDynamic >= convertedQuantity) {
+//           productInReceipt.quantityDynamic -= convertedQuantity;
+//           await warehouseReceiptDoc.save();
 
-          // Cộng tổng giá trị nhập kho
-          sumImportPrice += productInReceipt.importPrice * convertedQuantity;
+//           // Cộng tổng giá trị nhập kho
+//           sumImportPrice += productInReceipt.importPrice * convertedQuantity;
 
-          // Cập nhật sản phẩm
-          const price = productDoc.price; // Lưu giá cố định
-          const discountAmount = productDoc.discount
-            ? (productDoc.discount / 100) * price * convertedQuantity
-            : 0;
-          const totalPriceBeforeVAT =
-            price * convertedQuantity - discountAmount;
+//           // Cập nhật sản phẩm
+//           const price = productDoc.price; // Lưu giá cố định
+//           const discountAmount = productDoc.discount
+//             ? (productDoc.discount / 100) * price * convertedQuantity
+//             : 0;
+//           const totalPriceBeforeVAT =
+//             price * convertedQuantity - discountAmount;
 
-          // Lấy VAT từ sản phẩm (VAT là tỷ lệ phần trăm, ví dụ 0.1 cho 10%)
-          const VAT = productDoc.VAT || 0; // Đảm bảo có giá trị VAT, mặc định là 0 nếu không có
+//           // Lấy VAT từ sản phẩm (VAT là tỷ lệ phần trăm, ví dụ 0.1 cho 10%)
+//           const VAT = productDoc.VAT || 0; // Đảm bảo có giá trị VAT, mặc định là 0 nếu không có
 
-          // Tính VAT cho sản phẩm
-          const VATAmount = totalPriceBeforeVAT * VAT;
+//           // Tính VAT cho sản phẩm
+//           const VATAmount = totalPriceBeforeVAT * VAT;
 
-          // Cập nhật tổng tiền cho sản phẩm
-          const totalPrice = totalPriceBeforeVAT + VATAmount;
+//           // Cập nhật tổng tiền cho sản phẩm
+//           const totalPrice = totalPriceBeforeVAT + VATAmount;
 
-          updatedProducts.push({
-            product,
-            quantity: productQuantity,
-            unit,
-            price, // Giá cố định
-            discountAmount, // Giảm giá cố định
-            totalPrice, // Tổng tiền cố định đã bao gồm VAT
-            VAT: VATAmount, // VAT tính cho từng sản phẩm
-            warehouseDetails: [
-              {
-                warehouseReceipt: receipt,
-                quantity: convertedQuantity,
-              },
-            ],
-          });
+//           updatedProducts.push({
+//             product,
+//             quantity: productQuantity,
+//             unit,
+//             price, // Giá cố định
+//             discountAmount, // Giảm giá cố định
+//             totalPrice, // Tổng tiền cố định đã bao gồm VAT
+//             VAT: VATAmount, // VAT tính cho từng sản phẩm
+//             warehouseDetails: [
+//               {
+//                 warehouseReceipt: receipt,
+//                 quantity: convertedQuantity,
+//               },
+//             ],
+//           });
 
-          // Cập nhật tổng tiền
-          finalTotalAmount += totalPrice;
-          totalVAT += VATAmount; // Cộng VAT vào tổng VAT của đơn hàng
-        } else {
-          return res.status(400).json({
-            success: false,
-            message: `Not enough stock in warehouse receipt ${receipt} for product ${product}`,
-          });
-        }
-      }
+//           // Cập nhật tổng tiền
+//           finalTotalAmount += totalPrice;
+//           totalVAT += VATAmount; // Cộng VAT vào tổng VAT của đơn hàng
+//         } else {
+//           return res.status(400).json({
+//             success: false,
+//             message: `Not enough stock in warehouse receipt ${receipt} for product ${product}`,
+//           });
+//         }
+//       }
 
-      // Cập nhật thông tin sản phẩm trong kho chính
-      productDoc.quantity -= convertedQuantity;
-      productDoc.sold += convertedQuantity;
-      if (productDoc.quantity === 0) {
-        productDoc.status = "out_of_stock";
-      }
-      await productDoc.save();
-    }
+//       // Cập nhật thông tin sản phẩm trong kho chính
+//       productDoc.quantity -= convertedQuantity;
+//       productDoc.sold += convertedQuantity;
+//       if (productDoc.quantity === 0) {
+//         productDoc.status = "out_of_stock";
+//       }
+//       await productDoc.save();
+//     }
 
-    // Cập nhật tổng tiền VAT cho đơn hàng
-    const totalOrderAmount = finalTotalAmount;
+//     // Cập nhật tổng tiền VAT cho đơn hàng
+//     const totalOrderAmount = finalTotalAmount;
 
-    // Tạo mới đơn hàng
-    const newOrder = await Order.create({
-      user,
-      products: updatedProducts,
-      totalAmount: totalOrderAmount, // Tổng tiền đã bao gồm VAT
-      receiveAmount,
-      change,
-      amountVAT: totalVAT, // Tổng VAT cho đơn hàng
-      id,
-      sumImportPrice, // Tổng tiền nhập kho
-    });
+//     // Tạo mới đơn hàng
+//     const newOrder = await Order.create({
+//       user,
+//       products: updatedProducts,
+//       totalAmount: totalOrderAmount, // Tổng tiền đã bao gồm VAT
+//       receiveAmount,
+//       change,
+//       amountVAT: totalVAT, // Tổng VAT cho đơn hàng
+//       id,
+//       sumImportPrice, // Tổng tiền nhập kho
+//     });
 
-    return res.status(201).json({
-      success: true,
-      message: "Order created successfully!",
-      order: newOrder,
-    });
-  } catch (error) {
-    console.error("Error creating order:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Cannot create order",
-      error: error.message,
-    });
-  }
-});
+//     return res.status(201).json({
+//       success: true,
+//       message: "Order created successfully!",
+//       order: newOrder,
+//     });
+//   } catch (error) {
+//     console.error("Error creating order:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Cannot create order",
+//       error: error.message,
+//     });
+//   }
+// });
 
 const getOrderDay = expressAsyncHandler(async (req, res) => {
   // Lấy ngày từ request query hoặc sử dụng ngày hiện tại
@@ -2830,6 +3311,213 @@ const getTotalAmountComparison = async (req, res) => {
       .json({ error: "An error occurred while processing the request" });
   }
 };
+
+const createOrder = expressAsyncHandler(async (req, res) => {
+  try {
+    const { user, products, totalAmount, receiveAmount, amountVAT, id } = req.body;
+
+    // Kiểm tra dữ liệu đầu vào
+    if (
+      !user ||
+      !products ||
+      products.length === 0 ||
+      !totalAmount ||
+      !receiveAmount ||
+      !id ||
+      !amountVAT
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Missing required fields!" });
+    }
+
+    // Kiểm tra số lượng hợp lệ
+    for (const item of products) {
+      if (Number(item.quantity) <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid quantity for product ${item.product}`,
+        });
+      }
+    }
+
+    // Tính tiền thối lại
+    const change = receiveAmount - totalAmount;
+    if (change < 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Insufficient receive amount!" });
+    }
+
+    let updatedProducts = [];
+    let sumImportPrice = 0; // Tổng tiền nhập kho
+    let finalTotalAmount = 0; // Tổng tiền sau khi áp dụng giảm giá
+    let totalVAT = 0; // Tổng VAT
+
+    // Create a map to aggregate quantities and details for each product and unit combination
+    const productMap = new Map();
+
+    // Xử lý từng sản phẩm
+    for (const item of products) {
+      const { product, quantity, unit, warehouseReceipt: receipt } = item;
+
+      const productQuantity = Number(quantity);
+
+      // Lấy thông tin đơn vị tính
+      const unitDoc = await Unit.findById(unit);
+      if (!unitDoc) {
+        return res.status(404).json({
+          success: false,
+          message: `Unit ${unit} not found!`,
+        });
+      }
+
+      const convertedQuantity = productQuantity * unitDoc.convertQuantity;
+
+      // Lấy thông tin sản phẩm
+      const productDoc = await Product.findById(product);
+      if (!productDoc) {
+        return res.status(404).json({
+          success: false,
+          message: `Product ${product} not found!`,
+        });
+      }
+
+      if (productDoc.quantity < convertedQuantity) {
+        return res.status(400).json({
+          success: false,
+          message: `Not enough stock for product ${product}`,
+        });
+      }
+
+      // Lấy thông tin phiếu nhập kho
+      const warehouseReceiptDoc = await WarehouseReceipt.findById(receipt);
+      if (!warehouseReceiptDoc) {
+        return res.status(404).json({
+          success: false,
+          message: `Warehouse receipt ${receipt} not found!`,
+        });
+      }
+
+      // Trừ số lượng trong phiếu nhập kho
+      const productInReceipt = warehouseReceiptDoc.products.find(
+        (p) => p.product.toString() === product.toString()
+      );
+      if (productInReceipt) {
+        if (productInReceipt.quantityDynamic >= convertedQuantity) {
+          productInReceipt.quantityDynamic -= convertedQuantity;
+          await warehouseReceiptDoc.save();
+
+          // Cộng tổng giá trị nhập kho
+          sumImportPrice += productInReceipt.importPrice * convertedQuantity;
+
+          // Cập nhật sản phẩm
+          const price = productDoc.price; // Lưu giá cố định
+          const discountAmount = productDoc.discount
+            ? (productDoc.discount / 100) * price * convertedQuantity
+            : 0;
+          const totalPriceBeforeVAT =
+            price * convertedQuantity - discountAmount;
+
+          // Lấy VAT từ sản phẩm (VAT là tỷ lệ phần trăm, ví dụ 0.1 cho 10%)
+          const VAT = productDoc.VAT || 0; // Đảm bảo có giá trị VAT, mặc định là 0 nếu không có
+
+          // Tính VAT cho sản phẩm
+          const VATAmount = totalPriceBeforeVAT * VAT;
+
+          // Tính tổng tiền cho sản phẩm
+          const totalPrice = totalPriceBeforeVAT + VATAmount;
+
+          // Tạo khóa là sự kết hợp giữa mã sản phẩm và đơn vị tính
+          const productKey = `${product}-${unit}`;
+
+          // Aggregate data into the productMap based on the product and unit combination
+          if (!productMap.has(productKey)) {
+            productMap.set(productKey, {
+              product,
+              unit,
+              quantity: 0,
+              price,
+              discountAmount: 0,
+              totalPrice: 0,
+              VATAmount: 0,
+              warehouseDetails: [],
+            });
+          }
+
+          const aggregatedProduct = productMap.get(productKey);
+          aggregatedProduct.quantity += productQuantity;
+          aggregatedProduct.discountAmount += discountAmount;
+          aggregatedProduct.totalPrice += totalPrice;
+          aggregatedProduct.VATAmount += VATAmount;
+          aggregatedProduct.warehouseDetails.push({
+            warehouseReceipt: receipt,
+            quantity: convertedQuantity,
+          });
+
+        } else {
+          return res.status(400).json({
+            success: false,
+            message: `Not enough stock in warehouse receipt ${receipt} for product ${product}`,
+          });
+        }
+      }
+
+      // Cập nhật thông tin sản phẩm trong kho chính
+      productDoc.quantity -= convertedQuantity;
+      productDoc.sold += convertedQuantity;
+      if (productDoc.quantity === 0) {
+        productDoc.status = "out_of_stock";
+      }
+      await productDoc.save();
+    }
+
+    // Aggregate all product data from the map to the updatedProducts array
+    productMap.forEach((aggregatedProduct) => {
+      updatedProducts.push({
+        product: aggregatedProduct.product,
+        quantity: aggregatedProduct.quantity,
+        unit: aggregatedProduct.unit,
+        price: aggregatedProduct.price,
+        discountAmount: aggregatedProduct.discountAmount,
+        totalPrice: aggregatedProduct.totalPrice,
+        VAT: aggregatedProduct.VATAmount,
+        warehouseDetails: aggregatedProduct.warehouseDetails,
+      });
+
+      finalTotalAmount += aggregatedProduct.totalPrice;
+      totalVAT += aggregatedProduct.VATAmount;
+    });
+
+    // Tính tổng tiền VAT cho đơn hàng
+    const totalOrderAmount = finalTotalAmount;
+
+    // Tạo mới đơn hàng
+    const newOrder = await Order.create({
+      user,
+      products: updatedProducts,
+      totalAmount: totalOrderAmount, // Tổng tiền đã bao gồm VAT
+      receiveAmount,
+      change,
+      amountVAT: totalVAT, // Tổng VAT cho đơn hàng
+      id,
+      sumImportPrice, // Tổng tiền nhập kho
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Order created successfully!",
+      order: newOrder,
+    });
+  } catch (error) {
+    console.error("Error creating order:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Cannot create order",
+      error: error.message,
+    });
+  }
+});
 
 
 
