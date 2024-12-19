@@ -35,6 +35,7 @@ router.get("/last-id-number", [verifyAccessToken, isAdmin], ProductController.la
 router.post("/add-discount", [verifyAccessToken, isAdmin], ProductController.addDiscount)
 //
 router.post("/filter-id", [verifyAccessToken], ProductController.filterProductById)
+router.post("/get-infor-product", [verifyAccessToken], ProductController.getInforProduct)
 //
 router.post("/filter-product-by-name", [verifyAccessToken], ProductController.filterProductByName) 
 // 

@@ -995,52 +995,52 @@ const getAllWarehouseReceiptWeek = expressAsyncHandler(async (req, res) => {
   }
 });
 
-const changeIsDisplayProduct = expressAsyncHandler(async (req, res) => {
-  const { receiptId, productId, isDisplay } = req.body;
+// const changeIsDisplayProduct = expressAsyncHandler(async (req, res) => {
+//   const { receiptId, productId, isDisplay } = req.body;
 
-  // Kiểm tra nếu receiptId không phải ObjectId hợp lệ
-  if (!mongoose.Types.ObjectId.isValid(receiptId)) {
-    return res.status(400).json({
-      success: false,
-      message: "receiptId không hợp lệ. Phải là ObjectId 24 ký tự hex.",
-    });
-  }
+//   // Kiểm tra nếu receiptId không phải ObjectId hợp lệ
+//   if (!mongoose.Types.ObjectId.isValid(receiptId)) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "receiptId không hợp lệ. Phải là ObjectId 24 ký tự hex.",
+//     });
+//   }
 
-  try {
-    const receipt = await WarehouseReceipt.findById(receiptId);
+//   try {
+//     const receipt = await WarehouseReceipt.findById(receiptId);
 
-    if (!receipt) {
-      return res.status(404).json({
-        success: false,
-        message: "Không tìm thấy phiếu nhập kho với receiptId này.",
-      });
-    }
+//     if (!receipt) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Không tìm thấy phiếu nhập kho với receiptId này.",
+//       });
+//     }
 
-    // Tiến hành tìm và cập nhật sản phẩm
-    const product = receipt.products.find(item => item.product.toString() === productId);
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Không tìm thấy sản phẩm trong phiếu nhập kho này.",
-      });
-    }
+//     // Tiến hành tìm và cập nhật sản phẩm
+//     const product = receipt.products.find(item => item.product.toString() === productId);
+//     if (!product) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Không tìm thấy sản phẩm trong phiếu nhập kho này.",
+//       });
+//     }
 
-    // Cập nhật trường isDisplay
-    product.isDisplay = isDisplay;
+//     // Cập nhật trường isDisplay
+//     product.isDisplay = isDisplay;
 
-    await receipt.save();
+//     await receipt.save();
 
-    return res.status(200).json({
-      success: true,
-      message: "Cập nhật thành công.",
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Đã xảy ra lỗi khi cập nhật.",
-    });
-  }
-});
+//     return res.status(200).json({
+//       success: true,
+//       message: "Cập nhật thành công.",
+//     });
+//   } catch (error) {
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message || "Đã xảy ra lỗi khi cập nhật.",
+//     });
+//   }
+// });
 
 // const searchProducts = expressAsyncHandler(async (req, res) => {
 //   const { expirationStatus, productId, title, category, brand, idPNK } = req.body;
@@ -1289,6 +1289,61 @@ const searchProducts = expressAsyncHandler(async (req, res) => {
   }
 });
 
+const changeIsDisplayProduct = expressAsyncHandler(async (req, res) => {
+  const { receiptId, productId, isDisplay } = req.body;
+
+  // Kiểm tra nếu receiptId không phải ObjectId hợp lệ
+  if (!mongoose.Types.ObjectId.isValid(receiptId)) {
+    return res.status(400).json({
+      success: false,
+      message: "receiptId không hợp lệ. Phải là ObjectId 24 ký tự hex.",
+    });
+  }
+
+  try {
+    const receipt = await WarehouseReceipt.findById(receiptId);
+
+    if (!receipt) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy phiếu nhập kho với receiptId này.",
+      });
+    }
+
+    // Tìm sản phẩm trong phiếu nhập kho
+    const product = receipt.products.find(
+      (item) => item.product.toString() === productId
+    );
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy sản phẩm trong phiếu nhập kho này.",
+      });
+    }
+
+    // Nếu chuyển sang không hiển thị (isDisplay = false), trừ số lượng trong tồn kho
+    if (!isDisplay && product.quantityDynamic > 0) {
+      await Product.findByIdAndUpdate(productId, {
+        $inc: { quantity: -product.quantityDynamic }, // Trừ số lượng
+      });
+    }
+
+    // Cập nhật trường isDisplay
+    product.isDisplay = isDisplay;
+
+    await receipt.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Cập nhật thành công.",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Đã xảy ra lỗi khi cập nhật.",
+    });
+  }
+});
 
 
 

@@ -13,6 +13,7 @@ var shiftSchema = new mongoose.Schema(
       trim: true,
     },
     employees: [{ type: mongoose.Types.ObjectId, ref: "Employee" }],
+    employee_shift: [{ type: mongoose.Types.ObjectId, ref: "EmployeeShift" }],
     description: { type: String, require: true, trim: true },
   },
   {

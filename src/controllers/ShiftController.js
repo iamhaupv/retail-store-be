@@ -1,4 +1,5 @@
-const { Shift } = require("../models/index");
+const EmployeeShift = require("../models/EmployeeShift");
+const { Shift, Employee } = require("../models/index");
 const asyncHandler = require("express-async-handler");
 // create shift
 const createShift = asyncHandler(async (req, res) => {
@@ -23,16 +24,17 @@ const deleteShift = asyncHandler(async (req, res) => {
     delShift: delShift ? delShift : "Cannot delete shift!",
   });
 });
-// get list shift 
-const getShifts = asyncHandler(async(req, res) => {
-    const shifts = await Shift.find()
-    return res.status(200).json({
-        success: shifts ? true : false,
-        shifts: shifts ? shifts : "Cannot get list shifts!"
-    })
-})
+// get list shift
+const getShifts = asyncHandler(async (req, res) => {
+  const shifts = await Shift.find();
+  return res.status(200).json({
+    success: shifts ? true : false,
+    shifts: shifts ? shifts : "Cannot get list shifts!",
+  });
+});
+
 module.exports = {
   createShift,
   deleteShift,
-  getShifts
+  getShifts,
 };

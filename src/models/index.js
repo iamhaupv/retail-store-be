@@ -8,6 +8,7 @@ const WarehouseReceipt = require("./WarehouseReceipt")
 const Unit = require("./Unit")
 const Shelf = require("./Shelf")
 const Order = require("./Order")
+const EmployeeShift = require("./EmployeeShift")
 module.exports = {
   Product,
   User,
@@ -18,5 +19,6 @@ module.exports = {
   WarehouseReceipt,
   Unit,
   Shelf,
-  Order
+  Order,
+  EmployeeShift
 };

@@ -228,7 +228,8 @@ const uploadImageProduct = asyncHandler(async (req, res) => {
 const getAllProducts = asyncHandler(async (req, res) => {
   const products = await Product.find({ isDisplay: true })
     .populate("brand")
-    .populate("category").populate("unit")
+    .populate("category")
+    .populate("unit")
     .sort({ id: -1 })
     .exec();
 
@@ -355,7 +356,7 @@ const productFilterByBrandName = expressAsyncHandler(async (req, res) => {
 //         const importPrice = item.importPrice || 0; // Giá nhập vào
 
 //         return {
-//           unit: product?.unit?.name,  
+//           unit: product?.unit?.name,
 //           expires: item.expires,
 //           idPNK: receipt.idPNK,
 //           images: product.images || [], // Nếu không có hình ảnh, trả về mảng rỗng
@@ -400,7 +401,8 @@ const filterProductByName = expressAsyncHandler(async (req, res) => {
   }
 
   const products = await Product.find({
-    title: { $regex: title, $options: "i" }, isDisplay: true
+    title: { $regex: title, $options: "i" },
+    isDisplay: true,
   }).populate("brand");
 
   return res.status(200).json({
@@ -524,10 +526,11 @@ const filterProductMultiCondition = expressAsyncHandler(async (req, res) => {
   // Fetch products based on constructed query
   const products = await Product.find(query)
     .populate("brand")
-    .populate("category").populate({
+    .populate("category")
+    .populate({
       path: "unit",
-      select: "name"
-    })
+      select: "name",
+    });
 
   return res.status(200).json({
     success: true,
@@ -548,7 +551,11 @@ const filterPriceByProductName = expressAsyncHandler(async (req, res) => {
 
   try {
     // Tìm sản phẩm có `title`, `isDisplay = true`, và `quantity > 0`
-    const product = await Product.findOne({ title, isDisplay: true, quantity: { $gt: 0 } });
+    const product = await Product.findOne({
+      title,
+      isDisplay: true,
+      quantity: { $gt: 0 },
+    });
 
     if (!product) {
       return res.status(404).json({
@@ -603,12 +610,10 @@ const getAllProductsPagination = asyncHandler(async (req, res) => {
     const currentLimit = parseInt(limit) || 5;
 
     if (currentPage < 1 || currentLimit < 1) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Page and limit must be greater than 0",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Page and limit must be greater than 0",
+      });
     }
 
     const skip = (currentPage - 1) * currentLimit;
@@ -621,7 +626,9 @@ const getAllProductsPagination = asyncHandler(async (req, res) => {
       .limit(currentLimit)
       .exec();
 
-    const totalProducts = await Product.find({ isDisplay: true }).sort({id: -1});
+    const totalProducts = await Product.find({ isDisplay: true }).sort({
+      id: -1,
+    });
 
     return res.status(200).json({
       success: true,
@@ -754,22 +761,18 @@ const addProductToShelf = expressAsyncHandler(async (req, res) => {
 
     const receipt = await WarehouseReceipt.findById(warehouseReceipt);
     if (!receipt) {
-      return res
-        .status(404)
-        .json({
-          message: `Không tìm thấy phiếu nhập kho: ${warehouseReceipt}`,
-        });
+      return res.status(404).json({
+        message: `Không tìm thấy phiếu nhập kho: ${warehouseReceipt}`,
+      });
     }
 
     const productInReceipt = receipt.products.find(
       (p) => p.product.toString() === product
     );
     if (!productInReceipt) {
-      return res
-        .status(400)
-        .json({
-          message: `Sản phẩm không có trong phiếu nhập kho: ${product}`,
-        });
+      return res.status(400).json({
+        message: `Sản phẩm không có trong phiếu nhập kho: ${product}`,
+      });
     }
 
     if (quantity > productInReceipt.quantityDynamic) {
@@ -868,7 +871,10 @@ const addProductToShelf = expressAsyncHandler(async (req, res) => {
 const filterProductSumQuantity = expressAsyncHandler(async (req, res) => {
   try {
     // Lọc các sản phẩm có quantity > 0 và isDisplay là true trong Product
-    const products = await Product.find({ quantity: { $gte: 1 }, isDisplay: true });
+    const products = await Product.find({
+      quantity: { $gte: 1 },
+      isDisplay: true,
+    });
 
     const filteredProducts = [];
 
@@ -886,7 +892,10 @@ const filterProductSumQuantity = expressAsyncHandler(async (req, res) => {
       for (let receipt of warehouseReceipts) {
         // Duyệt qua tất cả sản phẩm trong phiếu kho để kiểm tra isDisplay
         for (let productInReceipt of receipt.products) {
-          if (productInReceipt.product.toString() === product._id.toString() && productInReceipt.isDisplay) {
+          if (
+            productInReceipt.product.toString() === product._id.toString() &&
+            productInReceipt.isDisplay
+          ) {
             isDisplayInAnyReceipt = true;
             break;
           }
@@ -904,9 +913,9 @@ const filterProductSumQuantity = expressAsyncHandler(async (req, res) => {
 
     return res.status(200).json({
       success: filteredProducts.length > 0,
-      products: filteredProducts.length > 0 ? filteredProducts : "No products found",
+      products:
+        filteredProducts.length > 0 ? filteredProducts : "No products found",
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
@@ -993,10 +1002,10 @@ const lastIdNumber = expressAsyncHandler(async (req, res) => {
 //       let expires = productItem.expires;  // Lấy giá trị expires
 //       console.log("Expires value for product:", expires);  // Debug log giá trị expires
 //       console.log(productItem.importPrice);
-      
+
 //       // Kiểm tra nếu expires là một giá trị hợp lệ
-//       const expiresDate = expires && !isNaN(new Date(expires).getTime()) 
-//                           ? new Date(expires) 
+//       const expiresDate = expires && !isNaN(new Date(expires).getTime())
+//                           ? new Date(expires)
 //                           : null;
 
 //       if (!expiresDate) {
@@ -1036,7 +1045,6 @@ const lastIdNumber = expressAsyncHandler(async (req, res) => {
 //   }
 // });
 
-
 const filterReceiptByProduct = expressAsyncHandler(async (req, res) => {
   // Kiểm tra input
   if (!req.body || !req.body.title) {
@@ -1060,12 +1068,12 @@ const filterReceiptByProduct = expressAsyncHandler(async (req, res) => {
 
   // Lấy ngày hiện tại
   const currentDate = new Date();
-  console.log("Current date: ", currentDate);  // Debug log ngày hiện tại
+  console.log("Current date: ", currentDate); // Debug log ngày hiện tại
 
   // Tính ngày hiện tại cộng thêm 10 ngày
   const tenDaysLater = new Date();
   tenDaysLater.setDate(currentDate.getDate() + 10);
-  console.log("Ten days later: ", tenDaysLater);  // Debug log ngày hiện tại cộng 10 ngày
+  console.log("Ten days later: ", tenDaysLater); // Debug log ngày hiện tại cộng 10 ngày
 
   // Lấy tất cả các phiếu nhập kho có chứa sản phẩm này
   const warehouseReceipts = await WarehouseReceipt.find({
@@ -1078,18 +1086,22 @@ const filterReceiptByProduct = expressAsyncHandler(async (req, res) => {
   // Lọc các phiếu nhập kho có quantityDynamic > 0 và sản phẩm có ngày hết hạn > ngày hiện tại + 10 ngày và isDisplay là true
   const filteredReceipts = warehouseReceipts.filter((receipt) => {
     return receipt.products.some((productItem) => {
-      let expires = productItem.expires;  // Lấy giá trị expires
-      console.log("Expires value for product:", expires);  // Debug log giá trị expires
+      let expires = productItem.expires; // Lấy giá trị expires
+      console.log("Expires value for product:", expires); // Debug log giá trị expires
       console.log("QuantityDynamic: ", productItem.quantityDynamic);
 
       // Kiểm tra nếu expires là một giá trị hợp lệ
-      const expiresDate = expires && !isNaN(new Date(expires).getTime()) 
-                          ? new Date(expires) 
-                          : null;
+      const expiresDate =
+        expires && !isNaN(new Date(expires).getTime())
+          ? new Date(expires)
+          : null;
 
       if (!expiresDate) {
-        console.log("Invalid expires date for product:", productItem.product.title);  // Debug log khi có lỗi
-        return false;  // Trả về false nếu expires không hợp lệ
+        console.log(
+          "Invalid expires date for product:",
+          productItem.product.title
+        ); // Debug log khi có lỗi
+        return false; // Trả về false nếu expires không hợp lệ
       }
 
       console.log("Expires Date: ", expiresDate); // Debug log ngày hết hạn của sản phẩm
@@ -1125,7 +1137,6 @@ const filterReceiptByProduct = expressAsyncHandler(async (req, res) => {
   }
 });
 
-
 const addDiscount = expressAsyncHandler(async (req, res) => {
   const { id, discount } = req.body;
 
@@ -1133,7 +1144,7 @@ const addDiscount = expressAsyncHandler(async (req, res) => {
   if (!id || discount === undefined) {
     return res.status(400).json({
       success: false,
-      message: "ID and discount are required"
+      message: "ID and discount are required",
     });
   }
 
@@ -1143,7 +1154,7 @@ const addDiscount = expressAsyncHandler(async (req, res) => {
   if (!product) {
     return res.status(404).json({
       success: false,
-      message: "Product not found"
+      message: "Product not found",
     });
   }
 
@@ -1156,7 +1167,7 @@ const addDiscount = expressAsyncHandler(async (req, res) => {
   return res.status(200).json({
     success: true,
     message: "Discount added successfully",
-    product // Trả về sản phẩm đã được thêm trường discount
+    product, // Trả về sản phẩm đã được thêm trường discount
   });
 });
 
@@ -1169,7 +1180,7 @@ const productByAllReceipt = expressAsyncHandler(async (req, res) => {
         populate: [
           { path: "brand", select: "name" },
           { path: "category", select: "name" },
-          { path: "unit", select: "name" }
+          { path: "unit", select: "name" },
         ],
       })
       .populate({
@@ -1196,7 +1207,7 @@ const productByAllReceipt = expressAsyncHandler(async (req, res) => {
           const importPrice = item.importPrice || 0; // Giá nhập vào
 
           return {
-            unit: product?.unit?.name,  
+            unit: product?.unit?.name,
             expires: item.expires,
             idPNK: receipt.idPNK,
             images: product.images || [], // Nếu không có hình ảnh, trả về mảng rỗng
@@ -1211,7 +1222,7 @@ const productByAllReceipt = expressAsyncHandler(async (req, res) => {
             quantityDynamic: item.quantityDynamic || 0,
             id: product.id,
             sumQuantity: product.sumQuantity,
-            discount: product.discount || 0
+            discount: product.discount || 0,
           };
         })
     );
@@ -1228,8 +1239,43 @@ const productByAllReceipt = expressAsyncHandler(async (req, res) => {
     });
   }
 });
+const getInforProduct = expressAsyncHandler(async (req, res) => {
+  if (!req.body || Object.keys(req.body).length === 0)
+    throw new Error("Missing input!");
+  
+  const { product, receipt } = req.body;
 
+  // Tìm sản phẩm dựa trên `id`
+  const pro = await Product.findOne({ id: product })
+    .populate({
+      path: "brand",
+      select: "name"
+    })
+    .populate({
+      path: "category",
+      select: "name"
+    });
+  if (!pro) throw new Error("Product does not exist!");
 
+  // Tìm phiếu nhập kho theo `idPNK`
+  const rec = await WarehouseReceipt.findOne({ idPNK: receipt }).lean();
+  if (!rec) throw new Error("Receipt does not exist!");
+
+  // Lọc sản phẩm trong `products` của phiếu nhập kho
+  const matchingProduct = rec.products.find(p => p.product.toString() === pro._id.toString());
+  if (!matchingProduct) throw new Error("Product is not associated with this receipt!");
+
+  // Cập nhật thông tin `receipt` chỉ chứa sản phẩm phù hợp
+  rec.products = [matchingProduct];
+
+  return res.status(200).json({
+    success: true,
+    item: {
+      product: pro,
+      receipt: rec,
+    },
+  });
+});
 
 
 module.exports = {
@@ -1257,5 +1303,6 @@ module.exports = {
   filterProductById,
   filterReceiptByProduct,
   lastIdNumber,
-  addDiscount
+  addDiscount,
+  getInforProduct,
 };
